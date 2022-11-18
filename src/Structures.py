@@ -1,49 +1,122 @@
+from kivy.app import App
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.label import Label
+# from kivy.uix.image import Image
+from kivy.uix.button import Button
+from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelHeader
+from kivy.lang import Builder
+from kivy.uix.textinput import TextInput
+
 '''
 File with all objects and structures used to create Free Style Itenerary
 '''
 
 
+class freestylePlannerGUI(App):
+    def build(self):
+        self.window = GridLayout()
+        self.window.cols = 1
+
+        # Create Version and License text
+        self.version = Label(text="Version:")
+        self.window.add_widget(self.version)
+
+        self.license = Label(text="License Date:")
+        self.window.add_widget(self.license)
+
+        # Create error display tabs
+        self.tb_panel = TabbedPanel()
+
+        settings = TabbedPanelHeader(text="Settings")
+        event = TabbedPanelHeader(text="Event Categories")
+        singles = TabbedPanelHeader(text="Singles")
+        couples = TabbedPanelHeader(text="Couples")
+        instructors = TabbedPanelHeader(text="Instructors")
+
+        self.tb_panel.add_widget(settings)
+        self.tb_panel.add_widget(event)
+        self.tb_panel.add_widget(singles)
+        self.tb_panel.add_widget(couples)
+        self.tb_panel.add_widget(instructors)
+
+        # use a scroll view
+
+
 class Heat:
 
-    def __init__(self, key='', number=0, roster=[], instructors=[]):
+    def __init__(self, key='', levels=[], roster=[], holes=[], singles=[], instructors=[], couples=[]):
         # key = Genre-Syllabus-Dance-index
         self.key = key
-        self.number = number
+        self.levels = levels
+        self.holes = holes
         self.roster = roster
+        self.singles = singles
         self.instructors = instructors
+        self.couples = couples
 
     def getRoster(self):
         return self.roster
 
+    def getLevels(self):
+        return self.levels
+
     def getInstructors(self):
         return self.instructors
 
-    def getNumber(self):
-        return self.number
+    def getHoles(self):
+        return self.holes
 
     def getKey(self):
         return self.key
 
-    def replaceContestant(self, current_couple, replacement_couple):
-        if self.roster.contains(current_couple):
-            if self.instructors.Contains(replacement_couple):
-                self.roster[self.roster.Index(current_couple)] = replacement_couple
+    def getSingles(self):
+        return self.singles
+
+    def getCouples(self):
+        return self.couples
+
+    def addEntry(self, entry, roomid):
+        # Append to the roster[roomid]
+        self.roster[roomid].append(entry)
+        #  Check the type and add to respective list
+        if entry["type id"] == "L":
+            self.singles.append(entry.loc[:, "Lead Dancer #"][0])
+            self.instructors.append(entry.loc[:, "Follow Dancer #"][0])
+        elif entry["type id"] == "F":
+            self.singles.append(entry.loc[:, "Follow Dancer #"][0])
+            self.instructors.append(entry.loc[:, "Lead Dancer #"][0])
+        elif entry["type id"] == "C":
+            self.couples.append(entry.loc[:, "Lead Dancer #"][0])
+            self.couples.append(entry.loc[:, "Follow Dancer #"][0])
+        # Subtract from the holes[roomid]
+        self.holes[roomid] -= 1
+
+    def replaceContestant(self, roomid, roster_index, replacement_couple):
+        tmp = self.roster[roomid][roster_index]
+        self.roster[roomid][roster_index] = replacement_couple
+        return tmp
 
 
 class HeatList:
-    def __init__(self, rosters=[],  heat_count=0):
+    def __init__(self, rosters=[], heat_count=0):
         self.rosters = rosters
         # self.level_bp = level_bp
-        self.heats_count = heat_count
+        self.heat_count = heat_count
 
     def getRostersList(self):
         return self.rosters
+
     '''
     def getLevelBreakPoints(self):
         return self.level_bp
     '''
+
     def getHeatCount(self):
-        return self.heats_count
+        return self.heat_count
+
+    def appendList(self, heat):
+        self.rosters.append(heat)
+        self.heat_count += 1
 
 
 class ConflictList:
@@ -94,6 +167,7 @@ class ConflictItemSingle:
     def getLocation(self):
         return self.loc
 
+
 class ConflictLog:
 
     def __init__(self, lvls=[]):
@@ -106,7 +180,7 @@ class ConflictLog:
             self.roomlog[roomid]["list"] = []
             self.roomlog[roomid]["lvl"] = lvl
             self.roomlog[roomid]["total"] = 0
-            self.roomlog[roomid]["mode_con"] = (0,0)
+            self.roomlog[roomid]["mode_con"] = (0, 0)
             self.roomlog[roomid]["mode_inst"] = 0
             self.roomlog[roomid]["mode_code"] = 0
             self.roomlog[roomid]["mode_loc"] = 0
