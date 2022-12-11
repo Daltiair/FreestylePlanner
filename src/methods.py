@@ -470,6 +470,8 @@ def partitionData():
                         # if levels > rooms assign based on ratio of instructor to student
                         # TODO: finish and Test levels > ballrooms
                         #  selected first based on % then based on instructor overlap
+                        #  Get all possible level combos overlap between all levels in heat select the lowest overlap
+                        #  Just go with largest number of instructors firstone
                         if level_count > ballrooms:
                             # heat_room_levs.append(decend_level_s[0][0]) # Add largest level to the heat list
                             overlap_data = calculateOverlap(instructors_available_in_lev, ballrooms)
