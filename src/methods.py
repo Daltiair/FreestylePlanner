@@ -55,7 +55,7 @@ def partitionData():
                 }
     
     df_set = pd.DataFrame(data=data_set)
-    """
+    
     data_cat = {'Dance': ['Foxtrot',
                           'ChaCha',
                           'Bachata',
@@ -139,7 +139,7 @@ def partitionData():
                  'Showdown': [1]
                  }
     df_coup = pd.DataFrame.from_dict(data_coup)
-
+    """
     # Import all input Sheets independently
     file = os.getcwd().replace('\src', "") + '\FreestyleEventPlannerInput.xlsm'
     df_set = pd.read_excel(file, sheet_name='Settings', index_col=0)
@@ -152,23 +152,22 @@ def partitionData():
 
     heats = makeHeatDict(genrelist, df_cat)
 
-    """ Commented Out for faster debugging
-        # Stops pandas from reading useless blank columns
-        cols = []
-        for i in range(len(dancelist)+baseSingleCols):
-            cols.append(i)
+    # Stops pandas from reading useless blank columns
+    cols = []
+    for i in range(len(dancelist)+baseSingleCols):
+        cols.append(i)
 
-        df_sing = pd.read_excel(file, sheet_name='Singles', usecols=cols)
-        df_sing['id'] = ''
-        # Stops pandas from reading useless blank columns
-        cols = []
-        for i in range(len(dancelist) + baseCoupleCols):
-            cols.append(i)
+    df_sing = pd.read_excel(file, sheet_name='Singles', usecols=cols)
+    df_sing['id'] = ''
+    # Stops pandas from reading useless blank columns
+    cols = []
+    for i in range(len(dancelist) + baseCoupleCols):
+        cols.append(i)
 
-        df_coup = pd.read_excel(file, sheet_name='Couples', usecols=cols)
+    df_coup = pd.read_excel(file, sheet_name='Couples', usecols=cols)
 
-        df_inst = pd.read_excel(file, sheet_name='Instructors')
-    """
+    df_inst = pd.read_excel(file, sheet_name='Instructors')
+
     # Get all settings data partitioned and saved
     days = int(df_set['Data']['Event Days'])
     hours_p_day = []
@@ -186,9 +185,9 @@ def partitionData():
     eventName = df_set['Data']['Event Name']
 
     age_brackets = []
-    for each in range(bracket_count):
-        age_brackets.append(int(df_set['Data'][each + 1 + days + 3]))
-
+    for each in range(bracket_count-1):
+        age_brackets.append(int(df_set['Data'][each + days + 2]))
+    age_brackets.append(1000)  # Append to make sure to get the last age bracket
 
     # Max number of couples on the floor for a dance assume even # of judges per ballroom
     max_dance_couples = judges * judge_ratio
@@ -261,7 +260,7 @@ def partitionData():
                 keys_in_s = [AB, FB, AS, FS, AG, FG]
                 keys_in_c = [AB, FB, AS, FS, AG, FG]
                 instructors_available_in_lev = []
-                unideal_heats = [] # Holds metadata on unideal heat to be filled by a level +- 1 if possible
+                unideal_heats = []  # Holds metadata on unideal heat to be filled by a level +- 1 if possible
                 instructor_dict = {}  # Track instructors in levels to know when to delete them from the available list
                 dance_heat_count = 0  # current Heat count for this dance event
                 tot_holes = []  # number of open spaces in the heats made to reach the maximum number per heat
@@ -280,46 +279,186 @@ def partitionData():
                 goto_next_dance = False  # Flag to set for moving to next dance event,
                                          # if all dfs are empty or too many conflicts with little data left
 # ------------------------------------------ Build dfs for Selection ---------------------------------------------------
-                # Slice dfs based on participation in dance event 'ev'
+                # Slice dfs based on participation in dance event 'ev', level, type, age
                 # Add identifier column Couple dfs and reformat to be ready for heat sheet print, Singles done later
-                for Single, Couple, roomlvl in zip(contestant_data['Single'], contestant_data['Couple'], keys):
+                # TODO: Get event division from event df
+                #  then break down each dvision to its smallest parts then combine where needed based on the division data
+                eventrow = df_cat.loc[df_cat['Dance'] == ev].reset_index(drop=True)
+                div = eventrow.loc[:, 'Event Divisions'][0].split(";")
+                for Single, Couple, lvl in zip(contestant_data['Single'], contestant_data['Couple'], keys):
                     # Slice dfs based on event 'ev'
-                    Couple = Couple[Couple[ev] > 0]
-                    Single = Single[Single[ev] > 0]
-                    instructors_in_lev = []
-                    level_entries = 0
-                    # Couple df operations
-                    if not Couple.empty:
-                        total_contestants_c = total_contestants_c + Couple.shape[0]
-                        total_entries_c = total_entries_c + Couple[ev].sum()
-                        for i, lev in enumerate(decend_level_c):
-                            if lev[1] <= Couple.shape[0]:
-                                added = True
-                                decend_level_c.insert(i-1, [roomlvl, Single.shape[0]])
-                                # decend_level_c.append([roomlvl, Couple.shape[0]]) for testing
-                                break
-                        if not added:
-                            decend_level_c.append([roomlvl, Couple.shape[0]])
-                        Couple['type id'] = 'C'
-                        Couple = Couple[['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name',
-                                         'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Level', 'School',
-                                         ev]]
+                    # TODO: Test the breakdown and sectioning of data based on division cell
+                    if ev in Couple:
+                        Couple = Couple[Couple[ev] > 0]
+                        shell_c = {lvl: {}}
+                        if not Couple.empty:  # Couple df operations
+                            Couple['type id'] = 'C'
+                            Couple = Couple[['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name', 'Lead Age',
+                                 'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Follow Age',
+                                 'Level', 'School', ev]]
+                            for i, age in enumerate(age_brackets):
+                                # Slice Couple so that it is inside age bracket
+                                if i == 0:  # Set bounds of age bracket
+                                    lower = 18
+                                    upper = age
+                                else:
+                                    lower = age_brackets[i - 1] + 1
+                                    upper = age
+                                # Split the df based on which age is lower and then add them together at the end
+                                sliced_f = Couple[Couple["Lead Age"] >= Couple["Follow Age"]]
+                                sliced_f = sliced_f[(lower <= sliced_f["Follow Age"]) & (sliced_f["Follow Age"] <= upper)]
+                                sliced_l = Couple[Couple["Lead Age"] < Couple["Follow Age"]]
+                                sliced_l = sliced_l[(lower <= sliced_l["Lead Age"]) & (sliced_l["Lead Age"] <= upper)]
+                                shell_c[lvl][age] = pd.concat([sliced_l, sliced_f])
                     else:
                         Couple = pd.DataFrame()
 
-                    # Each entry in dict is a level range i.e. AB, FB etc
-                    dance_dfs_dict_c[roomlvl] = Couple
+                    if not Couple.empty:
+                        pass
+                        # total_contestants_c = total_contestants_c + Couple.shape[0]
+                        # total_entries_c = total_entries_c + Couple[ev].sum()
+                        # added = False
+                        # for i, lev in enumerate(decend_level_c):
+                        #     if lev[1] <= Couple.shape[0]:
+                        #         added = True
+                        #         decend_level_c.insert(i-1, [lvl, Single.shape[0]])
+                        #         # decend_level_c.append([lvl, Couple.shape[0]]) for testing
+                        #         break
+                        # if not added:
+                        #     decend_level_c.append([lvl, Couple.shape[0]])
 
-                    # Get Unique instructors in this level
-                    if not Single.empty:
-                        instructor_dict[roomlvl] = {}
-                        for row, data in Single.iterrows():  # Iterate down all rows of Single df
-                            for num in data["Instructor Dancer #'s"]:  # Iterate through all instructor lists
-                                if instructors_in_lev.count(num) == 0:
-                                    instructors_in_lev.append(num)
-                                    instructor_dict[roomlvl][num] = 1
-                                else:
-                                    instructor_dict[roomlvl][num] += 1
+                    if ev in Single:
+                        Single = Single[Single[ev] > 0]
+                        shell_s = {lvl: {"Lead": {}, "Follow": {}}}
+                        shell_i = {lvl: {"Lead": {}, "Follow": {}}}
+                        if not Single.empty:
+                            if not Single[Single['Lead/Follow'] == 'Lead'].empty:
+                                df = Single[(Single['Lead/Follow'] == 'Lead') | (Single['Lead/Follow'] == 'L')]
+                                df['type id'] = 'L'
+                                df = df.rename(columns={'First Name': 'Lead First Name', 'Last Name': 'Lead Last Name',
+                                                        'Dancer #': 'Lead Dancer #'})
+                                df['Follow First Name'] = ''
+                                df['Follow Last Name'] = ''
+                                df['Follow Dancer #'] = ''
+                                df = df[['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name', "Age", "Instructor Dancer #'s",
+                                         'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Level', 'School', ev]]
+                                for i, age in enumerate(age_brackets):
+                                    # SLice so that it is inside age bracket
+                                    if i == 0:  # Set bounds of age bracket
+                                        lower = 18
+                                        upper = age
+                                    else:
+                                        lower = age_brackets[i - 1] + 1
+                                        upper = age
+                                    # Split the df based on which age is lower and then add them together at the end
+                                    sliced_l = df[(lower <= df["Age"]) & (df["Age"] <= upper)]
+                                    shell_s[lvl]["Lead"][age] = sliced_l
+                                    shell_i[lvl]["Lead"][age] = {}
+                                    # Find unique instructors for this division
+                                    # TODO: test this and then copy to follows
+                                    for row, data in sliced_l.iterrows():  # Iterate down all rows of Single df
+                                        if type(data["Instructor Dancer #'s"]) == int:
+                                            tmp = [data["Instructor Dancer #'s"]]
+                                        else:
+                                            tmp = [int(x) for x in data["Instructor Dancer #'s"].split(";")]
+                                        data["Instructor Dancer #'s"] = tmp
+                                        del tmp
+                                        for num in data["Instructor Dancer #'s"]:  # Iterate through all #'s in instructor lists
+                                            if num in shell_i[lvl]["Lead"][age].keys():
+                                                shell_i[lvl]["Lead"][age][num] += 1
+                                            else:
+                                                shell_i[lvl]["Lead"][age][num] = 1
+
+                            if not Single[Single['Lead/Follow'] == 'Follow'].empty:
+                                df2 = Single[Single['Lead/Follow'] == 'Follow']
+                                df2['type id'] = 'F'
+                                df2 = df2.rename(columns={'First Name': 'Follow First Name', 'Last Name': 'Follow Last Name',
+                                                    'Dancer #': 'Follow Dancer #'})
+                                df2['Lead First Name'] = ''
+                                df2['Lead Last Name'] = ''
+                                df2['Lead Dancer #'] = ''
+                                df2 = df2[['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name', "Instructor Dancer #'s",
+                                         'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Age', 'Level', 'School', ev]]
+                                for i, age in enumerate(age_brackets):
+                                    # SLice Couple so that it is inside age bracket
+                                    if i == 0:  # Set bounds of age bracket
+                                        lower = 18
+                                        upper = age
+                                    else:
+                                        lower = age_brackets[i - 1] + 1
+                                        upper = age
+                                    # Split the df based on which age is lower and then add them together at the end
+                                    sliced_f = df2[(lower <= df2["Age"]) & (df2["Age"] <= upper)]
+                                    shell_s[lvl]["Follow"][age] = sliced_f
+                                    shell_i[lvl]["Follow"][age] = {}
+                                    # Find unique instructors for this division
+                                    for row, data in sliced_f.iterrows():  # Iterate down all rows of Single df
+                                        if type(data["Instructor Dancer #'s"]) == int:
+                                            tmp = [data["Instructor Dancer #'s"]]
+                                        else:
+                                            tmp = [int(x) for x in data["Instructor Dancer #'s"].split(";")]
+                                        data["Instructor Dancer #'s"] = tmp
+                                        del tmp
+                                        for num in data["Instructor Dancer #'s"]:  # Iterate through all #'s in instructor lists
+                                            if num in shell_i[lvl]["Follow"][age].keys():
+                                                shell_i[lvl]["Follow"][age][num] += 1
+                                            else:
+                                                shell_i[lvl]["Follow"][age][num] = 1
+                        else:
+                            Single = pd.DataFrame()
+                    else:
+                        Single = pd.DataFrame()
+                    # Add together dfs based on the division metrics of this event
+                    if div.count('A') == 0 and div.count('a') == 0:
+                        # Lead concat 
+                        for i, key in enumerate(shell_s[lvl]["Lead"].keys()):
+                            if i == 0:
+                                tmp = shell_s[lvl]["Lead"][key]
+                                continue
+                            tmp = pd.concat([tmp, shell_s[lvl]["Lead"][key]])
+                        shell_s[lvl]["Lead"] = tmp
+
+                        # Follow Concat
+                        for i, key in enumerate(shell_s[lvl]["Follow"].keys()):
+                            if i == 0:
+                                tmp = shell_s[lvl]["Follow"][key]
+                                continue
+                            tmp = pd.concat([tmp, shell_s[lvl]["Follow"][key]])
+                        shell_s[lvl]["Follow"] = tmp
+
+                        # Couple Concat
+                        for i, key in enumerate(shell_c[lvl].keys()):
+                            if i == 0:
+                                tmp = shell_c[lvl][key]
+                                continue
+                            tmp = pd.concat([tmp, shell_c[lvl][key]])
+                        shell_c[lvl] = tmp
+
+                    # if event is not separated by type
+                    if div.count('T') == 0 and div.count('t') == 0:
+                        # Singles Concat
+                        for i, key in enumerate(shell_s[lvl].keys()):
+                            if i == 0:
+                                tmp = shell_s[lvl][key]
+                                continue
+                            if type(tmp) is dict:
+                                for subkey in tmp.keys():
+                                    tmp[subkey] = pd.concat([tmp[subkey], shell_s[lvl][key][subkey]])
+                            else:
+                                tmp = pd.concat([tmp, shell_s[lvl][key]])
+                        shell_s[lvl] = tmp
+
+                        # Concat Singles and Couples
+                        for i, key in enumerate(shell_s.keys()):
+                            if i == 0:
+                                tmp = shell_s[key]
+                                continue
+                            if type(tmp) is dict:
+                                for subkey in tmp.keys():
+                                    tmp[subkey] = pd.concat([tmp[subkey], shell_c[lvl][key][subkey]])
+                            else:
+                                tmp = pd.concat([tmp, shell_c[lvl][key]])
+                    level_entries = 0
 
                     df = pd.DataFrame()
                     # Single df operations both for lead and follow
@@ -332,53 +471,15 @@ def partitionData():
                         for i, lev in enumerate(decend_level_s):
                             if lev[1] <= Single.shape[0]:
                                 added = True
-                                decend_level_s.insert(i-1, [roomlvl, Single.shape[0]])
-                                # decend_level_s.append([roomlvl, Single.shape[0]]) for testing
+                                decend_level_s.insert(i-1, [lvl, Single.shape[0]])
+                                # decend_level_s.append([lvl, Single.shape[0]]) for testing
                                 break
                         if not added:
-                            decend_level_s.append([roomlvl, Single.shape[0]])
+                            decend_level_s.append([lvl, Single.shape[0]])
 
-                        if not Single[Single['Lead/Follow'] == 'Lead'].empty:
-                            df = Single[Single['Lead/Follow'] == 'Lead']
-                            df['type id'] = 'L'
-                            df = df.rename(columns={'First Name': 'Lead First Name', 'Last Name': 'Lead Last Name',
-                                                    'Dancer #': 'Lead Dancer #'})
-                            df['Follow First Name'] = ''
-                            df['Follow Last Name'] = ''
-                            df['Follow Dancer #'] = ''
-                            df = df[['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name', "Instructor Dancer #'s",
-                                     'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Level', 'School', ev]]
-                            # Get unique instructors available in this level
-                            inst_col = "Follow Dancer #"
-
-                        if not Single[Single['Lead/Follow'] == 'Follow'].empty:
-                            df2 = Single[Single['Lead/Follow'] == 'Follow']
-                            df2['type id'] = 'F'
-                            df2 = df2.rename(columns={'First Name': 'Follow First Name', 'Last Name': 'Follow Last Name',
-                                                'Dancer #': 'Follow Dancer #'})
-                            df2['Lead First Name'] = ''
-                            df2['Lead Last Name'] = ''
-                            df2['Lead Dancer #'] = ''
-                            df2 = df2[['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name', "Instructor Dancer #'s",
-                                     'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Level', 'School', ev]]
-                            '''
-                            # Get unique instructors available in this level
-                            inst_col = "Lead Dancer #"
-                            for row, data in df2.iterrows():  # Iterate down all rows of Follows
-                                for num in data[inst_col]:  # Iterate through all instructors for that Follow
-                                    if instructors_in_lev.count(num) == 0:
-                                        instructors_in_lev.append(num)
-                            '''
-                            df = pd.concat([df, df2])  # Concat Lead and Follow Singles
-                    # Each entry in dict is a level range i.e. AB, FB etc
-                    #dance_dfs_dict[i] = pd.concat([df, Couple]) This line will concat singles and couples, not needed as of now.
-                    #dance_dfs_dict_s[i] = Single
-                    dance_dfs_dict_s[roomlvl] = df
-                    instructors_available_in_lev.append(instructors_in_lev)
                 # Assume lowest level will change based on empty dfs
                 coup_start_lev = keys[AB]
                 sing_start_lev = keys[AB]
-
                 # Set up Percent trackers
                 for key in keys:
                     if dance_dfs_dict_s[key].empty:
@@ -405,35 +506,21 @@ def partitionData():
                 # Check if current dfs are empty, and remove them
                 # TODO: need a way to flag if a df is not there for couples vs singles, I could be assuming there are couples where they may be none
                 single_empty = False
-                single_first = True  # Used to set new lowest level for single dfs
                 couple_empty = False
-                couple_first = True  # Used to set new lowest level for couple dfs
                 for key in keys:
                     # Single
                     if dance_dfs_dict_s[key].empty:
                         del dance_dfs_dict_s[key]
                         keys_in_s[key] = -1
-                    elif single_first:
-                        if key < FG:
-                            sing_start_lev = keys[key]
-                            single_first = False
-                        else:
-                            single_empty = True
+
                     # Couple
                     if dance_dfs_dict_c[key].empty:
                         del dance_dfs_dict_c[key]
                         keys_in_c[key] = -1
-                        couple_first = True
-                    elif couple_first:
-                        if key < FG:
-                            coup_start_lev = keys[key]
-                            couple_first = False
-                        else:
-                            couple_empty = True
                 
                 # if both Pools are totally empty continue
                 # In this case it would only happen if there were no entries to current dance 'ev'
-                if single_empty and couple_empty:
+                if keys_in_s.count(-1) == 6 and keys_in_s.count(-1) == 6:
                     continue
                 # Set current lev
                 curr_lev = sing_start_lev
@@ -816,6 +903,7 @@ def partitionData():
                                     else:
                                         fin_rooms.append(1)
                             else: # backfill completed
+                                pass
                                 # TODO: count levels left in dance dfs c use singles code as a copy to assign levels to rooms
                             # Loop rooms, backfill or filling new room to completion before moving to the next room
                             for roomid, roomlvl in enumerate(heat_room_levs):
@@ -1003,6 +1091,7 @@ def partitionData():
                                                     for heat in unideal_heats:
                                                         if heat[1] == curr_heat+1 or heat[1] == curr_heat-1:
                                                             if heat[2] <= dance_dfs_dict_c.shape[0]:
+                                                                pass
                                                                 # TODO: run a method here, to fill in the preexisting heat?
                                             if solved == 1000 and len(heat_roster[roomid]) != couples_per_ballroom:
                                                 fin_rooms[roomid] = 2  # Forced finish
@@ -1024,14 +1113,11 @@ def partitionData():
                                                     heat_finished = True
                             heat_roster.append(curr_heat)  # add this individual heat to roster list
                         # TODO: make the df suited for printing on the excel output, and add the single and couple dfs together
-                    key = each + '-' + every + '-' + ev + '-' + len(rosters)
+                    key = each + '-' + every + '-' + ev + '-' + len(heat_list.getHeatCount())
                     heat = Heat(key, 0, heat_roster, instructors_in_heat)
-                    rosters.append(heat)
+                    heat_list.appendList(heat)
                     tot_current_heats += 1
                     dance_heat_count += 1
-            # Once all heats for an Event/Dance are made create a HeatList object
-            heatlist = HeatList(rosters, len(rosters))
-            heats[each][every][ev] = heatlist
     buildEvent()
     print("Hello World")
 
