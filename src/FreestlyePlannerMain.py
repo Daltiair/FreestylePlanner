@@ -5,8 +5,9 @@ Written by Dalton Dabney 7/9/22
 '''
 
 from methods import *
-from gui import *
+# from gui import *
 
 if __name__ == '__main__':
-    # partitionData()
-    freestylePlannerGuiApp().run()
+    # freestylePlannerGuiApp().run()
+    partitionData()
+    # guiApp().run()

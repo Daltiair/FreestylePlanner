@@ -3,6 +3,8 @@ from pandas import ExcelWriter
 import os
 import random
 import openpyxl
+from openpyxl import workbook
+from openpyxl.styles import PatternFill
 from Structures import Heat, HeatList, ConflictLog, ConflictItemSingle
 
 '''FIle with all methods used to create the Freestyle itenerary
@@ -159,14 +161,30 @@ def partitionData():
 
     df_sing = pd.read_excel(file, sheet_name='Singles', usecols=cols)
     df_sing['id'] = ''
+    df_sing["Dancer #"] = df_sing['Dancer #'].astype(int)
+    df_sing["Age"] = df_sing['Age'].astype(int)
+    # for row, entry in df_sing.iterrows():
+    #     # Retrofit the instructor list data
+    #     if type(entry["Instructor Dancer #'s"]) == int:
+    #         tmp = [entry["Instructor Dancer #'s"]]
+    #     else:
+    #         tmp = [int(x) for x in entry["Instructor Dancer #'s"].split(";")]
+    #     entry["Instructor Dancer #'s"] = tmp
+    #     del tmp
+
     # Stops pandas from reading useless blank columns
     cols = []
     for i in range(len(dancelist) + baseCoupleCols):
         cols.append(i)
 
     df_coup = pd.read_excel(file, sheet_name='Couples', usecols=cols)
+    df_coup["Lead Dancer #"] = df_coup['Lead Dancer #'].astype(int)
+    df_coup["Follow Dancer #"] = df_coup['Follow Dancer #'].astype(int)
+    df_coup["Lead Age"] = df_coup['Lead Age'].astype(int)
+    df_coup["Follow Age"] = df_coup['Follow Age'].astype(int)
 
     df_inst = pd.read_excel(file, sheet_name='Instructors')
+    df_inst["Dancer #"] = df_inst['Dancer #'].astype(int)
 
     # Get all settings data partitioned and saved
     days = int(df_set['Data']['Event Days'])
@@ -191,7 +209,8 @@ def partitionData():
 
     # Max number of couples on the floor for a dance assume even # of judges per ballroom
     max_dance_couples = judges * judge_ratio
-    couples_per_ballroom = int(max_dance_couples / ballrooms)  # Number of Couples on a singular ballroom
+    # couples_per_ballroom = int(max_dance_couples / ballrooms)  # Number of Couples on a singular ballroom
+    couples_per_ballroom = 7  # Number of Couples on a singular ballroom
 
     heats_p_day = []  # Holds # of heats per day
     # Calculations based on Settings data
@@ -256,10 +275,11 @@ def partitionData():
                 # TODO: add age prio option, break up level dfs based on age then set up iterator variables
                 dance_dfs_dict_c = {}
                 dance_dfs_dict_s = {}
-                keys = [AB, FB, AS, FS, AG, FG]
+                dance_dfs = {"C": {}, "S": {"Lead": {}, "Follow": {}}}
+                l_keys = [AB, FB, AS, FS, AG, FG]
                 keys_in_s = [AB, FB, AS, FS, AG, FG]
                 keys_in_c = [AB, FB, AS, FS, AG, FG]
-                instructors_available_in_lev = []
+                # instructors_available_in_lev = []
                 unideal_heats = []  # Holds metadata on unideal heat to be filled by a level +- 1 if possible
                 instructor_dict = {}  # Track instructors in levels to know when to delete them from the available list
                 dance_heat_count = 0  # current Heat count for this dance event
@@ -285,19 +305,77 @@ def partitionData():
                 #  then break down each dvision to its smallest parts then combine where needed based on the division data
                 eventrow = df_cat.loc[df_cat['Dance'] == ev].reset_index(drop=True)
                 div = eventrow.loc[:, 'Event Divisions'][0].split(";")
-                for Single, Couple, lvl in zip(contestant_data['Single'], contestant_data['Couple'], keys):
-                    # Slice dfs based on event 'ev'
-                    # TODO: Test the breakdown and sectioning of data based on division cell
-                    if ev in Couple:
-                        Couple = Couple[Couple[ev] > 0]
-                        shell_c = {lvl: {}}
-                        if not Couple.empty:  # Couple df operations
-                            Couple['type id'] = 'C'
-                            Couple = Couple[['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name', 'Lead Age',
-                                 'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Follow Age',
-                                 'Level', 'School', ev]]
+
+                # Build Couples df for this event broken down by all metrics
+                shell_c = {}
+                for Couple, lvl in zip(contestant_data['Couple'], l_keys):
+                    Couple = Couple[Couple[ev] > 0]
+                    dance_dfs["C"][lvl] = {}
+                    shell_c[lvl] = {}
+                    if not Couple.empty:  # Couple df operations
+                        Couple['type id'] = 'C'
+                        Couple = Couple[['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name', 'Lead Age',
+                                         'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Follow Age',
+                                         'Level', 'School', ev]]
+                        if div.count('t') == 0 or div.count("T") == 0:
+                            Couple["Instructor Dancer #'s"] = ''
+                        for i, age in enumerate(age_brackets):
+                            # Slice Couple so that it is inside age bracket
+                            if i == 0:  # Set bounds of age bracket
+                                lower = 18
+                                upper = age
+                            else:
+                                lower = age_brackets[i - 1] + 1
+                                upper = age
+                            # Split the df based on which age is lower and then add them together at the end
+                            sliced_f = Couple[Couple["Lead Age"] >= Couple["Follow Age"]]
+                            sliced_f = sliced_f[(lower <= sliced_f["Follow Age"]) & (sliced_f["Follow Age"] <= upper)]
+                            sliced_l = Couple[Couple["Lead Age"] < Couple["Follow Age"]]
+                            sliced_l = sliced_l[(lower <= sliced_l["Lead Age"]) & (sliced_l["Lead Age"] <= upper)]
+                            shell_c[lvl][age] = pd.concat([sliced_l, sliced_f])
+                    else:
+                        for i, age in enumerate(age_brackets):
+                            dance_dfs["C"][lvl][age] = pd.DataFrame()
+                            shell_c[lvl][age] = pd.DataFrame()
+
+
+                # if not Couple.empty:
+                #     pass
+                #     # total_contestants_c = total_contestants_c + Couple.shape[0]
+                #     # total_entries_c = total_entries_c + Couple[ev].sum()
+                #     # added = False
+                #     # for i, lev in enumerate(decend_level_c):
+                #     #     if lev[1] <= Couple.shape[0]:
+                #     #         added = True
+                #     #         decend_level_c.insert(i-1, [lvl, Single.shape[0]])
+                #     #         # decend_level_c.append([lvl, Couple.shape[0]]) for testing
+                #     #         break
+                #     # if not added:
+                #     #     decend_level_c.append([lvl, Couple.shape[0]])
+                shell_s = {"Lead": {}, "Follow": {}}
+                shell_i = {"Lead": {}, "Follow": {}}
+                for Single, lvl in zip(contestant_data['Single'], l_keys):
+                    Single = Single[Single[ev] > 0]
+                    dance_dfs["S"]["Lead"][lvl] = {}
+                    dance_dfs["S"]["Follow"][lvl] = {}
+                    shell_s["Lead"][lvl] = {}
+                    shell_i["Lead"][lvl] = {}
+                    shell_s["Follow"][lvl] = {}
+                    shell_i["Follow"][lvl] = {}
+                    if not Single.empty:
+                        if not Single[Single['Lead/Follow'] == 'Lead'].empty:
+                            df = Single[(Single['Lead/Follow'] == 'Lead') | (Single['Lead/Follow'] == 'L')]
+                            df['type id'] = 'L'
+                            df = df.rename(columns={'First Name': 'Lead First Name', 'Last Name': 'Lead Last Name',
+                                                    'Dancer #': 'Lead Dancer #', "Age": "Lead Age"})
+                            df['Follow First Name'] = ''
+                            df['Follow Last Name'] = ''
+                            df['Follow Age'] = ''
+                            df['Follow Dancer #'] = ''
+                            df = df[['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name', "Lead Age", "Follow Age", "Instructor Dancer #'s",
+                                     'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Level', 'School', ev]]
                             for i, age in enumerate(age_brackets):
-                                # Slice Couple so that it is inside age bracket
+                                # SLice so that it is inside age bracket
                                 if i == 0:  # Set bounds of age bracket
                                     lower = 18
                                     upper = age
@@ -305,128 +383,99 @@ def partitionData():
                                     lower = age_brackets[i - 1] + 1
                                     upper = age
                                 # Split the df based on which age is lower and then add them together at the end
-                                sliced_f = Couple[Couple["Lead Age"] >= Couple["Follow Age"]]
-                                sliced_f = sliced_f[(lower <= sliced_f["Follow Age"]) & (sliced_f["Follow Age"] <= upper)]
-                                sliced_l = Couple[Couple["Lead Age"] < Couple["Follow Age"]]
-                                sliced_l = sliced_l[(lower <= sliced_l["Lead Age"]) & (sliced_l["Lead Age"] <= upper)]
-                                shell_c[lvl][age] = pd.concat([sliced_l, sliced_f])
-                    else:
-                        Couple = pd.DataFrame()
-
-                    if not Couple.empty:
-                        pass
-                        # total_contestants_c = total_contestants_c + Couple.shape[0]
-                        # total_entries_c = total_entries_c + Couple[ev].sum()
-                        # added = False
-                        # for i, lev in enumerate(decend_level_c):
-                        #     if lev[1] <= Couple.shape[0]:
-                        #         added = True
-                        #         decend_level_c.insert(i-1, [lvl, Single.shape[0]])
-                        #         # decend_level_c.append([lvl, Couple.shape[0]]) for testing
-                        #         break
-                        # if not added:
-                        #     decend_level_c.append([lvl, Couple.shape[0]])
-
-                    if ev in Single:
-                        Single = Single[Single[ev] > 0]
-                        shell_s = {lvl: {"Lead": {}, "Follow": {}}}
-                        shell_i = {lvl: {"Lead": {}, "Follow": {}}}
-                        if not Single.empty:
-                            if not Single[Single['Lead/Follow'] == 'Lead'].empty:
-                                df = Single[(Single['Lead/Follow'] == 'Lead') | (Single['Lead/Follow'] == 'L')]
-                                df['type id'] = 'L'
-                                df = df.rename(columns={'First Name': 'Lead First Name', 'Last Name': 'Lead Last Name',
-                                                        'Dancer #': 'Lead Dancer #'})
-                                df['Follow First Name'] = ''
-                                df['Follow Last Name'] = ''
-                                df['Follow Dancer #'] = ''
-                                df = df[['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name', "Age", "Instructor Dancer #'s",
-                                         'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Level', 'School', ev]]
-                                for i, age in enumerate(age_brackets):
-                                    # SLice so that it is inside age bracket
-                                    if i == 0:  # Set bounds of age bracket
-                                        lower = 18
-                                        upper = age
+                                sliced_l = df[(lower <= df["Lead Age"]) & (df["Lead Age"] <= upper)]
+                                shell_s["Lead"][lvl][age] = sliced_l
+                                shell_i["Lead"][lvl][age] = {}
+                                # Find unique instructors for this division
+                                # TODO: test this and then copy to follows
+                                for row, data in sliced_l.iterrows():  # Iterate down all rows of Single df
+                                    if type(data["Instructor Dancer #'s"]) == int:
+                                        tmp = [data["Instructor Dancer #'s"]]
                                     else:
-                                        lower = age_brackets[i - 1] + 1
-                                        upper = age
-                                    # Split the df based on which age is lower and then add them together at the end
-                                    sliced_l = df[(lower <= df["Age"]) & (df["Age"] <= upper)]
-                                    shell_s[lvl]["Lead"][age] = sliced_l
-                                    shell_i[lvl]["Lead"][age] = {}
-                                    # Find unique instructors for this division
-                                    # TODO: test this and then copy to follows
-                                    for row, data in sliced_l.iterrows():  # Iterate down all rows of Single df
-                                        if type(data["Instructor Dancer #'s"]) == int:
-                                            tmp = [data["Instructor Dancer #'s"]]
+                                        tmp = [int(x) for x in data["Instructor Dancer #'s"].split(";")]
+                                    data["Instructor Dancer #'s"] = tmp
+                                    del tmp
+                                    for num in data["Instructor Dancer #'s"]:  # Iterate through all #'s in instructor lists
+                                        if num in shell_i["Lead"][lvl][age].keys():
+                                            shell_i["Lead"][lvl][age][num] += 1
                                         else:
-                                            tmp = [int(x) for x in data["Instructor Dancer #'s"].split(";")]
-                                        data["Instructor Dancer #'s"] = tmp
-                                        del tmp
-                                        for num in data["Instructor Dancer #'s"]:  # Iterate through all #'s in instructor lists
-                                            if num in shell_i[lvl]["Lead"][age].keys():
-                                                shell_i[lvl]["Lead"][age][num] += 1
-                                            else:
-                                                shell_i[lvl]["Lead"][age][num] = 1
-
-                            if not Single[Single['Lead/Follow'] == 'Follow'].empty:
-                                df2 = Single[Single['Lead/Follow'] == 'Follow']
-                                df2['type id'] = 'F'
-                                df2 = df2.rename(columns={'First Name': 'Follow First Name', 'Last Name': 'Follow Last Name',
-                                                    'Dancer #': 'Follow Dancer #'})
-                                df2['Lead First Name'] = ''
-                                df2['Lead Last Name'] = ''
-                                df2['Lead Dancer #'] = ''
-                                df2 = df2[['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name', "Instructor Dancer #'s",
-                                         'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Age', 'Level', 'School', ev]]
-                                for i, age in enumerate(age_brackets):
-                                    # SLice Couple so that it is inside age bracket
-                                    if i == 0:  # Set bounds of age bracket
-                                        lower = 18
-                                        upper = age
-                                    else:
-                                        lower = age_brackets[i - 1] + 1
-                                        upper = age
-                                    # Split the df based on which age is lower and then add them together at the end
-                                    sliced_f = df2[(lower <= df2["Age"]) & (df2["Age"] <= upper)]
-                                    shell_s[lvl]["Follow"][age] = sliced_f
-                                    shell_i[lvl]["Follow"][age] = {}
-                                    # Find unique instructors for this division
-                                    for row, data in sliced_f.iterrows():  # Iterate down all rows of Single df
-                                        if type(data["Instructor Dancer #'s"]) == int:
-                                            tmp = [data["Instructor Dancer #'s"]]
-                                        else:
-                                            tmp = [int(x) for x in data["Instructor Dancer #'s"].split(";")]
-                                        data["Instructor Dancer #'s"] = tmp
-                                        del tmp
-                                        for num in data["Instructor Dancer #'s"]:  # Iterate through all #'s in instructor lists
-                                            if num in shell_i[lvl]["Follow"][age].keys():
-                                                shell_i[lvl]["Follow"][age][num] += 1
-                                            else:
-                                                shell_i[lvl]["Follow"][age][num] = 1
+                                            shell_i["Lead"][lvl][age][num] = 1
                         else:
-                            Single = pd.DataFrame()
+                            for i, age in enumerate(age_brackets):
+                                dance_dfs["S"]["Lead"][lvl][age] = pd.DataFrame()
+                                shell_s["Lead"][lvl][age] = pd.DataFrame()
+                                shell_i["Lead"][lvl][age] = pd.DataFrame()
+
+                        if not Single[Single['Lead/Follow'] == 'Follow'].empty:
+
+                            df2 = Single[Single['Lead/Follow'] == 'Follow']
+                            df2['type id'] = 'F'
+                            df2 = df2.rename(columns={'First Name': 'Follow First Name', 'Last Name': 'Follow Last Name',
+                                                'Dancer #': 'Follow Dancer #', "Age": "Follow Age"})
+                            df2['Lead First Name'] = ''
+                            df2['Lead Last Name'] = ''
+                            df2['Lead Age'] = ''
+                            df2['Lead Dancer #'] = ''
+                            df2 = df2[['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name', "Lead Age" , "Instructor Dancer #'s",
+                                     'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Follow Age', 'Level', 'School', ev]]
+                            for i, age in enumerate(age_brackets):
+                                # SLice Couple so that it is inside age bracket
+                                if i == 0:  # Set bounds of age bracket
+                                    lower = 18
+                                    upper = age
+                                else:
+                                    lower = age_brackets[i - 1] + 1
+                                    upper = age
+                                # Split the df based on which age is lower and then add them together at the end
+                                sliced_f = df2[(lower <= df2["Follow Age"]) & (df2["Follow Age"] <= upper)]
+                                shell_s["Follow"][lvl][age] = sliced_f
+                                shell_i["Follow"][lvl][age] = {}
+
+                        else:
+                            for i, age in enumerate(age_brackets):
+                                dance_dfs["S"]["Follow"][lvl][age] = pd.DataFrame()
+                                shell_s["Follow"][lvl][age] = pd.DataFrame()
+                                shell_i["Follow"][lvl][age] = pd.DataFrame()
                     else:
-                        Single = pd.DataFrame()
-                    # Add together dfs based on the division metrics of this event
-                    if div.count('A') == 0 and div.count('a') == 0:
-                        # Lead concat 
-                        for i, key in enumerate(shell_s[lvl]["Lead"].keys()):
-                            if i == 0:
-                                tmp = shell_s[lvl]["Lead"][key]
-                                continue
-                            tmp = pd.concat([tmp, shell_s[lvl]["Lead"][key]])
-                        shell_s[lvl]["Lead"] = tmp
+                        for i, age in enumerate(age_brackets):
+                            dance_dfs["S"]["Lead"][lvl][age] = pd.DataFrame()
+                            dance_dfs["S"]["Follow"][lvl][age] = pd.DataFrame()
+                            shell_s["Follow"][lvl][age] = pd.DataFrame()
+                            shell_s["Lead"][lvl][age] = pd.DataFrame()
+                            shell_i["Lead"][lvl][age] = pd.DataFrame()
+                            shell_i["Follow"][lvl][age] = pd.DataFrame()
 
-                        # Follow Concat
-                        for i, key in enumerate(shell_s[lvl]["Follow"].keys()):
+                # Add together dfs based on the division metrics of this event
+                if div.count('A') == 0 and div.count('a') == 0:
+                    # Lead concat
+                    for lvl in shell_s["Lead"].keys():
+                        for i, key in enumerate(shell_s["Lead"][lvl].keys()):
                             if i == 0:
-                                tmp = shell_s[lvl]["Follow"][key]
+                                tmp = shell_s["Lead"][lvl][key]
                                 continue
-                            tmp = pd.concat([tmp, shell_s[lvl]["Follow"][key]])
-                        shell_s[lvl]["Follow"] = tmp
+                            tmp = pd.concat([tmp, shell_s["Lead"][lvl][key]])
+                        shell_s["Lead"][lvl] = tmp
+                    # Combine Instructor data
+                    for lvl in shell_i["Lead"].keys():
+                        for i, key in enumerate(shell_i["Lead"][lvl].keys()):
+                            if i == 0:
+                                tmp = shell_i["Lead"][lvl][key]
+                                continue
+                            tmp = tmp.update(shell_i["Lead"][lvl][key])
+                        shell_s["Lead"][lvl] = tmp
 
-                        # Couple Concat
+
+                    # Follow Concat
+                    for lvl in shell_s["Follow"].keys():
+                        for i, key in enumerate(shell_s["Follow"][lvl].keys()):
+                            if i == 0:
+                                tmp = shell_s["Follow"][lvl][key]
+                                continue
+                            tmp = pd.concat([tmp, shell_s["Follow"][lvl][key]])
+                        shell_s["Follow"][lvl] = tmp
+
+                    # Couple Concat
+                    for lvl in shell_c.keys():
                         for i, key in enumerate(shell_c[lvl].keys()):
                             if i == 0:
                                 tmp = shell_c[lvl][key]
@@ -434,161 +483,217 @@ def partitionData():
                             tmp = pd.concat([tmp, shell_c[lvl][key]])
                         shell_c[lvl] = tmp
 
-                    # if event is not separated by type
-                    if div.count('T') == 0 and div.count('t') == 0:
-                        # Singles Concat
-                        for i, key in enumerate(shell_s[lvl].keys()):
-                            if i == 0:
-                                tmp = shell_s[lvl][key]
-                                continue
-                            if type(tmp) is dict:
-                                for subkey in tmp.keys():
-                                    tmp[subkey] = pd.concat([tmp[subkey], shell_s[lvl][key][subkey]])
-                            else:
-                                tmp = pd.concat([tmp, shell_s[lvl][key]])
-                        shell_s[lvl] = tmp
+                # Combine all levels if needed
+                if div.count('L') == 0 and div.count('l') == 0:
+                    # Lead Concat
+                    for i, lvl in enumerate(shell_s["Lead"].keys()):
+                        if i == 0:
+                            tmp = shell_s["Lead"][lvl]
+                            continue
+                        if type(tmp) is dict:
+                            for subkey in tmp.keys():
+                                tmp[subkey] = pd.concat([tmp[subkey], shell_s["Lead"][lvl][subkey]])
+                        else:
+                            tmp = pd.concat([tmp, shell_s["Lead"][lvl]])
+                    shell_s["Lead"] = tmp
 
-                        # Concat Singles and Couples
-                        for i, key in enumerate(shell_s.keys()):
-                            if i == 0:
-                                tmp = shell_s[key]
-                                continue
-                            if type(tmp) is dict:
-                                for subkey in tmp.keys():
-                                    tmp[subkey] = pd.concat([tmp[subkey], shell_c[lvl][key][subkey]])
-                            else:
-                                tmp = pd.concat([tmp, shell_c[lvl][key]])
-                    level_entries = 0
+                    # Follow Concat
+                    for i, lvl in enumerate(shell_s["Follow"].keys()):
+                        if i == 0:
+                            tmp = shell_s["Follow"][lvl]
+                            continue
+                        if type(tmp) is dict:
+                            for subkey in tmp.keys():
+                                tmp[subkey] = pd.concat([tmp[subkey], shell_s["Follow"][lvl][subkey]])
+                        else:
+                            tmp = pd.concat([tmp, shell_s["Follow"][lvl]])
+                    shell_s["Follow"] = tmp
 
-                    df = pd.DataFrame()
-                    # Single df operations both for lead and follow
-                    if not Single.empty:
-                        # Find totals for this Singles level
-                        total_contestants_s = total_contestants_s + Single.shape[0]
-                        total_entries_s = total_entries_s + Single[ev].sum()
-                        # Track Levels largest to smallest
-                        added = False
-                        for i, lev in enumerate(decend_level_s):
-                            if lev[1] <= Single.shape[0]:
-                                added = True
-                                decend_level_s.insert(i-1, [lvl, Single.shape[0]])
-                                # decend_level_s.append([lvl, Single.shape[0]]) for testing
-                                break
-                        if not added:
-                            decend_level_s.append([lvl, Single.shape[0]])
+                    for i, key in enumerate(shell_c.keys()):
+                        if i == 0:
+                            tmp = shell_c[key]
+                            continue
+                        if type(tmp) is dict:
+                            for subkey in tmp.keys():
+                                tmp[subkey] = pd.concat([tmp[subkey], shell_c[key][subkey]])
+                        else:
+                            tmp = pd.concat([tmp, shell_c[key]])
+                    shell_c = tmp
 
-                # Assume lowest level will change based on empty dfs
-                coup_start_lev = keys[AB]
-                sing_start_lev = keys[AB]
-                # Set up Percent trackers
-                for key in keys:
-                    if dance_dfs_dict_s[key].empty:
-                        lev_percent_s.append(-1)
-                        percent_left_s.append(-1)
-                    else:
-                        lev_percent_s.append(dance_dfs_dict_s[key][ev].sum() / total_entries_s)
-                        percent_left_s.append(1.0)
+                # if event Singles should be combined
+                if (div.count('S') == 0 and div.count('s') == 0) or (div.count('T') == 0 and div.count('t') == 0):
+                    # Singles Lead/Follow Concat
+                    for i, key in enumerate(shell_s.keys()):
+                        if i == 0:
+                            tmp = shell_s[key]
+                            continue
+                        if type(tmp) is dict: # Go down the tree and combine the corresponding N nodes
+                            for subkey in tmp.keys():
+                                if type(tmp[subkey]) is dict:
+                                    for subkey2 in tmp[subkey].keys():
+                                        tmp[subkey][subkey2] = pd.concat([tmp[subkey][subkey2], shell_s[key][subkey][subkey2]])
+                                else:
+                                    tmp[subkey] = pd.concat([tmp[subkey], shell_s[key][subkey]])
+                        else:
+                            tmp = pd.concat([tmp, shell_s[key]])
+                    shell_s = tmp
 
-                    if dance_dfs_dict_c[key].empty:
-                        lev_percent_c.append(-1)
-                        percent_left_c.append(-1)
-                    else:
-                        lev_percent_c.append(dance_dfs_dict_c[key][ev].sum() / total_entries_c)
-                        percent_left_c.append(1.0)
+                # put shells into df
+                dance_dfs["S"] = shell_s
+                dance_dfs["C"] = shell_c
 
-                # Set Holes
-                for key in keys:
-                    if dance_dfs_dict_s[key].empty:
-                        tot_holes.append(-1)
-                    else:
-                        tot_holes.append(0)
+                # If Couples and Singles need to be combined
+                if div.count('T') == 0 and div.count('t') == 0:
+                    for i, key in enumerate(dance_dfs.keys()):
+                        if i == 0:
+                            tmp = dance_dfs[key]
+                            continue
+                        if type(tmp) is dict:  # Go down the tree and combine the corresponding N nodes
+                            for subkey in tmp.keys():
+                                if type(tmp[subkey]) is dict:
+                                    for subkey2 in tmp[subkey].keys():
+                                        tmp[subkey][subkey2] = pd.concat([tmp[subkey][subkey2], dance_dfs[key][subkey][subkey2]])
+                                else:
+                                    tmp[subkey] = pd.concat([tmp[subkey], dance_dfs[key][subkey]])
+                        else:
+                            tmp = pd.concat([tmp, dance_dfs[key]])
+                    dance_dfs["A"] = tmp
+                    del dance_dfs["S"]
+                    del dance_dfs["C"]
+
+                    del shell_s
+                    del shell_c
+
+                # df = pd.DataFrame()
+                # # Single df operations both for lead and follow
+                # if not Single.empty:
+                #     # Find totals for this Singles level
+                #     total_contestants_s = total_contestants_s + Single.shape[0]
+                #     total_entries_s = total_entries_s + Single[ev].sum()
+                #     # Track Levels largest to smallest
+                #     added = False
+                #     for i, lev in enumerate(decend_level_s):
+                #         if lev[1] <= Single.shape[0]:
+                #             added = True
+                #             decend_level_s.insert(i-1, [lvl, Single.shape[0]])
+                #             # decend_level_s.append([lvl, Single.shape[0]]) for testing
+                #             break
+                #     if not added:
+                #         decend_level_s.append([lvl, Single.shape[0]])
+
+                # # Set up Percent trackers
+                # for key in keys:
+                #     if dance_dfs_dict_s[key].empty:
+                #         lev_percent_s.append(-1)
+                #         percent_left_s.append(-1)
+                #     else:
+                #         lev_percent_s.append(dance_dfs_dict_s[key][ev].sum() / total_entries_s)
+                #         percent_left_s.append(1.0)
+                #
+                #     if dance_dfs_dict_c[key].empty:
+                #         lev_percent_c.append(-1)
+                #         percent_left_c.append(-1)
+                #     else:
+                #         lev_percent_c.append(dance_dfs_dict_c[key][ev].sum() / total_entries_c)
+                #         percent_left_c.append(1.0)
+
+                # # Set Holes
+                # for key in keys:
+                #     if dance_dfs_dict_s[key].empty:
+                #         tot_holes.append(-1)
+                #     else:
+                #         tot_holes.append(0)
 
                 # Check if current dfs are empty, and remove them
-                # TODO: need a way to flag if a df is not there for couples vs singles, I could be assuming there are couples where they may be none
-                single_empty = False
-                couple_empty = False
-                for key in keys:
-                    # Single
-                    if dance_dfs_dict_s[key].empty:
-                        del dance_dfs_dict_s[key]
-                        keys_in_s[key] = -1
+                deleteEmpty(dance_dfs)
 
-                    # Couple
-                    if dance_dfs_dict_c[key].empty:
-                        del dance_dfs_dict_c[key]
-                        keys_in_c[key] = -1
-                
                 # if both Pools are totally empty continue
                 # In this case it would only happen if there were no entries to current dance 'ev'
-                if keys_in_s.count(-1) == 6 and keys_in_s.count(-1) == 6:
+                if len(dance_dfs) == 0:
                     continue
-                # Set current lev
-                curr_lev = sing_start_lev
+                inst_tree = buildInstTree(dance_dfs, {}, ev)
+                pre_inst_tree = inst_tree.copy()
 # ---------------------------------------------- Selection Process -----------------------------------------------------
                 # TODO: may have to make 2 conflict resolvers/holders one for singles and one for couples
-                heat_list = HeatList([], 0)  # list of individual heats for the current dance 'ev'
-                singles_done = False  # True when all singles are in heats for this event 'ev'
-                couples_done = False  # True when all couples are in heats for this event 'ev'
-                while len(dance_dfs_dict_s) > 0 and len(dance_dfs_dict_c) > 0: # while there are contestants in the dfs still
+                floors = eventrow.loc[:, 'Floors'][0]
+                heat_list = HeatList([], floors, 0)  # list of individual heats for the current dance 'ev'
+                singles_empty = False  # True when all singles are in heats for this event 'ev'
+                couples_empty = False  # True when all couples are in heats for this event 'ev'
+                while len(dance_dfs) > 0:  # while there are contestants in the dfs still
                     heat_roster = []  # holds full contestant data for a heat, each element is a list for a dance floor
                     fin_rooms = []  # marks a room as finished with a 1
                     instructors_in_heat = []  # Holds instructor numbers for quick reference
+                    instructor_heat_list = []  # Holds instructor numbers for quick reference
                     singles_in_heat = []  # Holds contestant number for quick reference
-                    couples_in_heat = [] # Holds Couples number for quick ref.
+                    couples_in_heat = []  # Holds Couples number for quick ref.
                     # couples_in_heat format [[1 Lead #,1 Follow #,...,N Follow #],...[1 Lead #,1 Follow #,..., N Follow #]]
-                    for rooms in range(ballrooms):
+                    floor_info = pickDfs(ev, dance_dfs, inst_tree, floors, div, age_brackets, couples_per_ballroom)
+                    if len(floor_info) < floors:
+                        split_mode = 1
+                        # TODO may need to delete this
+                        # level_mode_selection_lev = []
+                        vacant_rooms = floors - len(floor_info)
+                    for floor in range(floors):
                         heat_roster.append([])
                         instructors_in_heat.append([])
                         singles_in_heat.append([])
                         couples_in_heat.append([])
                         fin_rooms.append(0)
                     heat_finished = False
-                # ---------------------------------------------- Singles -------------------------------------------
-                    while len(dance_dfs_dict_s) > 0 or single_empty:  # Match all singles/instructors first
-                        # Add the soft level assignment to the rooms, this is based on instructors and students in the level
-                        heat_room_levs = []  # holds the levels of each room len <= ballrooms
-                        level_mode = 0  # indicator for when levels are lower than rooms
-                        lev_mode_selection = False # Indicate if/when a level mode selection is happening
-                        # Check how many levels there are
-                        level_count = 0
-                        for lev in keys_in_s:
-                            if lev > -1:
-                                level_count += 1
-                        # if levels > rooms assign based on ratio of instructor to student
-                        # TODO: finish and Test levels > ballrooms
-                        #  selected first based on % then based on instructor overlap
-                        #  Get all possible level combos overlap between all levels in heat select the lowest overlap
-                        #  Just go with largest number of instructors firstone
-                        if level_count > ballrooms:
-                            # heat_room_levs.append(decend_level_s[0][0]) # Add largest level to the heat list
-                            overlap_data = calculateOverlap(instructors_available_in_lev, ballrooms)
-                            looped = False
-                            # While rooms are not filled
-                            while len(heat_room_levs) < ballrooms:
-                                # Go down list of largest rooms and if they fit fill them
-                                for i, lev in enumerate(decend_level_s):
-                                    lev = lev[0]
-                                    if heat_room_levs.count(lev) > 0:
-                                        continue
-                                    if overlap_data[lev]['level total'] >= couples_per_ballroom*.5:
-                                        if overlap_data[lev]['avg'] >= .45:
-                                            heat_room_levs.append(lev)
-                                            continue
-                                    if looped:
-                                        heat_room_levs.append(lev)
-                                    if len(heat_room_levs) == ballrooms:
-                                        break
-                                looped = True
+                    # selection_dfs = []
+                    s_floors = []
+                    sfin_rooms = []
+                    c_floors = []
+                    cfin_rooms = []
+                    # Separate out singles and couple assigned floors
+                    if 't' in div or 'T' in div:
+                        for floor in floor_info:
+                            if floor[0] == "S":
+                                s_floors.append(floor)
+                                sfin_rooms.append(0)
+                            else:
+                                c_floors.append(floor)
+                                cfin_rooms.append(0)
+                    log = ConflictLog(floor_info)  # make conflict log for this heat
+                    while not heat_finished:
+                        # ---------------------------------------------- Singles ---------------------------------------
+                        # heat_room_levs = []  # holds the levels of each room len <= ballrooms
+                        lev_mode_selection = False  # Indicate if/when a level mode selection is happening
+                        # TODO move some of this code to the pickDf function as that will provide answer to start to try and split up levels
+                        # # Check how many levels there are
+                        # level_count = 0
+                        # for lev in keys_in_s:
+                        #     if lev > -1:
+                        #         level_count += 1
+                        # # if levels > rooms assign based on ratio of instructor to student
+                        # # TODO: finish and Test levels > ballrooms
+                        # #  selected first based on % then based on instructor overlap
+                        # #  Get all possible level combos overlap between all levels in heat select the lowest overlap
+                        # #  Just go with largest number of instructors firstone
+                        # if level_count > ballrooms:
+                        #     # heat_room_levs.append(decend_level_s[0][0]) # Add largest level to the heat list
+                        #     overlap_data = calculateOverlap(instructors_available_in_lev, ballrooms)
+                        #     looped = False
+                        #     # While rooms are not filled
+                        #     while len(heat_room_levs) < ballrooms:
+                        #         # Go down list of largest rooms and if they fit fill them
+                        #         for i, lev in enumerate(decend_level_s):
+                        #             lev = lev[0]
+                        #             if heat_room_levs.count(lev) > 0:
+                        #                 continue
+                        #             if overlap_data[lev]['level total'] >= couples_per_ballroom*.5:
+                        #                 if overlap_data[lev]['avg'] >= .45:
+                        #                     heat_room_levs.append(lev)
+                        #                     continue
+                        #             if looped:
+                        #                 heat_room_levs.append(lev)
+                        #             if len(heat_room_levs) == ballrooms:
+                        #                 break
+                        #         looped = True
 
                         # if levels < rooms assign all the levels then come back after full or conflicts
-                        elif level_count < ballrooms:
-                            level_mode = 1
-                            level_mode_selection_lev = []
-                            for lev in keys_in_s:
-                                if lev > -1:
-                                    heat_room_levs.append(lev)
-                            vacant_rooms = len(heat_roster) - len(heat_room_levs)
-                            ''' For now disregard this, may come back to this part if i have a good idea for it
+
+                        ''' For now disregard this, may come back to this part if i have a good idea for it
                         elif level_count < rooms:
                             # Get counts of instructors
                             inst_counts = []
@@ -608,339 +713,330 @@ def partitionData():
                                             if len(heat_room_levs) < ballrooms:
                                                 heat_room_levs.append(keys[inst])
                             '''
-                        else:
-                            for lev in keys_in_s:
-                                if lev > -1:
-                                    heat_room_levs.append(lev)
-                        log = ConflictLog(heat_room_levs)  # make conflict log for this heat
                         heat_holes = []
-                        for place in heat_room_levs:
+                        for place in floor_info:
                             heat_holes.append(0)
                         # Make Instructors for heat list that will change based on placed contestants and instructors
+                        dfs_for_heat = []
+                        inst_tree_nodes = []
                         instructors_available_for_heat = []
-                        for data in instructors_available_in_lev:
-                            instructors_available_for_heat.append(data[:])
-                        # TODO: will now infite loop need to set conditions for heat_finished
-                        key = each + '-' + every + '-' + ev + '-' + str(len(heat_list.getRostersList()))
-                        while not heat_finished:
-                            selection_finished = False
+                        for roomid, info in enumerate(s_floors):
+                            for i, key in enumerate(info):
+                                if i == 0:
+                                    tmp = dance_dfs[key]
+                                    tmp2 = inst_tree[key]
+                                elif type(tmp) is dict:
+                                    tmp = tmp[key]
+                                    tmp2 = tmp2[key]
+                            dfs_for_heat.append(tmp)
+                            inst_tree_nodes.append(tmp2)
+                            instructors_available_for_heat.append(list(tmp2.keys()))
+                        heat_key = each + '-' + every + '-' + ev + '-' + str(len(heat_list.getRostersList()))
+                        selection_finished = False
+                        print("Event " + ev + ", Heat number: " + str(heat_list.getHeatCount()))
+                        print(floor_info)
+                        print()
+                        while not selection_finished:
+                            if len(s_floors) == 0:  # If no singles move to couples selection
+                                break
                             # Selection is before
-                            while not selection_finished:
-                                # TODO: try to get as many instructors in the heat as possible
-                                # TODO: track count conflict between matches, conflict type
-                                #  internal: no free contestant for inst save contestants who are dupe
-                                #  external: instructor not free
-                                #
-                                for roomid, roomlvl in enumerate(heat_room_levs):  # For each ballroom make 1 instructor/single pair
-                                    if fin_rooms[roomid] > 0:  # if room is filled or declared full, continue on
-                                        continue
+                            # TODO: try to get as many instructors in the heat as possible
+                            # TODO: track count conflict between matches, conflict type
+                            #  internal: no free contestant for inst save contestants who are dupe
+                            #  external: instructor not free
+                            #
+                            for roomid, room_info in enumerate(s_floors):  # For each ballroom make 1 instructor/single pair
+                                if sfin_rooms[roomid] > 0:  # if room is filled or declared full, continue on
+                                    continue
+                                placed = False  # Set when a valid instructor/single pair is placed
+                                attempted = []  # holds instructors attempted for this search
+                                consecutive = 0  # Stops infinite loops on failed attempts to add candidate to the heat
+                                solved = 0  # counts how many resolveConflict() calls for this pair search
+                                while (not placed) and not (sfin_rooms[roomid] > 0):  # Find a viable single/inst match
+                                    # TODO: test instructor conflict
+                                    if consecutive > 5000:
+                                        print("max conflicts in ", room_info, "df size", dfs_for_heat[roomid].shape[0], " heat index ", dance_heat_count)
+                                        print(" ")
+                                    contestantconflicts = []
 
-                                    placed = False  # Set when a valid instructor/single pair is placed
-                                    curr_lev = roomlvl  # Set curr_lev to room's assigned level
-                                    attempted = []  # holds instructors attempted for this search
-                                    consecutive = 0  # Stops infinite loops on failed attempts to add candidate to the heat
-                                    solved = 0  # counts how many resolveConflict() calls for this pair search
-                                    while (not placed) and fin_rooms[roomid] != 1:  # Find a viable single/inst match
-                                        # TODO: test instructor conflict
-                                        contestantconflicts = []
-                                        inst = random.choice(instructors_available_for_heat[curr_lev])  # get random instructor, will throw error if list at index is empty
-                                        # if attempted.count(inst) == 0:  # Check if instructor has been tried before
-                                        #     attempted.append(inst)
-                                        # else:
-                                        #     consecutive += 1
-                                        instructor_taken = False
-                                        for selection in instructors_in_heat:
-                                            if instructor_taken:
-                                                break
-                                            if selection.count(inst) > 0:  # Check if instructor is being used in heat
-                                                instructor_taken = True
-                                                break
+                                    inst = random.choice(instructors_available_for_heat[roomid])  # get random instructor, will throw error if list at index is empty
+                                    # if attempted.count(inst) == 0:  # Check if instructor has been tried before
+                                    #     attempted.append(inst)
+                                    # else:
+                                    #     consecutive += 1
+                                    instructor_taken = False
+                                    for selection in instructors_in_heat:
                                         if instructor_taken:
-                                            cons = getContestantConflictList(dance_dfs_dict_s[curr_lev], inst, singles_in_heat)
-                                            log.addConflict(ConflictItemSingle(1, cons, inst, 'e'), roomlvl, roomid)
-                                            consecutive += 1
-                                            continue
-                                    # Find a single to pair with this instructor
-                                        '''
-                                        possible_singles = dance_dfs_dict_s[curr_lev]
-                                        for row, contestant in possible_singles.iterows():
-                                            for _list in contestant["Instructor Dancer #'s"]:
-                                                found = False
-                                                for num in _list:
-                                                    if num == inst:
-                                                        found = True
-                                                        break
-                                                if not found:
-                                                    possible_singles.drop(possible_singles.index[row])
-                                        possible_singles = dance_dfs_dict_s[curr_lev][dance_dfs_dict_s[curr_lev].loc[:,"Instructor Dancer #'s"].count(inst) > 0]
-                                        '''
-                                        found = False
-                                        # Loop over each row in the df for this level
-                                        df_shuffled = dance_dfs_dict_s[curr_lev].sample(frac=1)
-                                        for row, entry in df_shuffled.iterrows():
-                                            next_contestant = False
-                                            if found:
-                                                break
-                                            # Set column variables based on single type
-                                            if entry["type id"] == "L":
-                                                contestant_col = "Lead Dancer #"
-                                                inst_col = "Follow Dancer #"
-                                                inst_fname = "Follow First Name"
-                                                inst_lname = "Follow Last Name"
-                                            elif entry["type id"] == "F":
-                                                contestant_col = "Follow Dancer #"
-                                                inst_col = "Lead Dancer #"
-                                                inst_fname = "Lead First Name"
-                                                inst_lname = "Lead Last Name"
-                                            else:
-                                                raise Exception("Type id for " + entry + " is invalid")
-                                            # Loop over the instructor list for the contestant row
-                                            for num in entry["Instructor Dancer #'s"]:
-                                                if num == inst:
-                                                    for rost in singles_in_heat:
-                                                        if rost.count(entry[contestant_col]) > 0:
-                                                            contestantconflicts.append(entry[contestant_col])
-                                                            next_contestant = True
-                                                    if not next_contestant:
-                                                        # Set candidate to this single/inst match
-                                                        candidate = entry.to_frame().T
-                                                        candidate = candidate.reset_index(drop=True)
-                                                        instructor_data = df_inst[df_inst["Dancer #"] == inst].reset_index(drop=True)
-                                                        candidate.loc[0, inst_col] = instructor_data.loc[0, "Dancer #"]
-                                                        candidate.loc[0, inst_fname] = instructor_data.loc[0, "First Name"]
-                                                        candidate.loc[0, inst_lname] = instructor_data.loc[0, "Last Name"]
-                                                        found = True
-                                                        break
-                                        if found:
-                                            # Remove/add to tracking data structs
-                                            instructors_in_heat[roomid].append(inst)
-                                            singles_in_heat[roomid].append(candidate.loc[:, contestant_col][0])
-                                            heat_roster[roomid].append(candidate)
-                                            instructors_available_for_heat[curr_lev].remove(inst)
-                                            for num in candidate.loc[:, "Instructor Dancer #'s"][0]:
-                                                if instructor_dict[curr_lev][num] == 1:
-                                                    del instructor_dict[curr_lev][num]
-                                                    instructors_available_in_lev[curr_lev].remove(num)
-                                                else:
-                                                    instructor_dict[curr_lev][num] -= 1
-                                            # Remove the placed candidate from the df, or -1 if multi-entry
-                                            if candidate.loc[:, ev][0] == 1:
-                                                dance_dfs_dict_s[curr_lev] = dance_dfs_dict_s[curr_lev][
-                                                    dance_dfs_dict_s[curr_lev].loc[:, contestant_col] != candidate.loc[
-                                                        0, contestant_col]]
-                                                # Change the largest level tracker if needed
-                                                for i, lev in enumerate(decend_level_s):
-                                                    # Find current level in the list
-                                                    if lev[0] == curr_lev:
-                                                        lev[1] = lev[1] - 1
-                                                        # If contestants are gone then remove the level
-                                                        if lev[1] == 0:
-                                                            decend_level_s.remove(lev)
-                                                            break
-                                                        # If it is not the smallest level already
-                                                        if i < len(decend_level_s) - 1:
-                                                            # If level is now smaller than adjacent level, swap them
-                                                            if lev[1] < decend_level_s[i + 1][1]:
-                                                                tmp = decend_level_s[i + 1]
-                                                                decend_level_s[i + 1] = lev
-                                                                decend_level_s[i] = tmp
-                                                        break
-                                            else:
-                                                dance_dfs_dict_s[curr_lev].loc[
-                                                    dance_dfs_dict_s[curr_lev].loc[:, contestant_col] ==
-                                                    candidate.loc[:, contestant_col][0], [ev]] = candidate.loc[:, ev][0] - 1
-                                            placed = True
-                                            # Check if current level df is empty after a placed candidate
-                                            if dance_dfs_dict_s[curr_lev].empty:
-                                                # TODO: Decide if I want to finish room if list is empty or start filling it with level +- 1
-                                                #  Here a should check the holes and if < couples just move on, if not start filling in +- 1
-                                                fin_rooms[roomid] = 1
-                                                del dance_dfs_dict_s[curr_lev]  # Delete df
-                                                keys_in_s[curr_lev] = -1  # Make key location -1 to show level is empty
-                                                if keys_in_s.count(-1) == 6:
-                                                    single_empty = True
-                                            # Determine if room is finished
-                                            if single_empty:
-                                                for i in enumerate(heat_room_levs):
-                                                    fin_rooms[i] = 1
-                                            if len(heat_roster[roomid]) == couples_per_ballroom:
-                                                fin_rooms[roomid] = 1
-                                            if len(instructors_available_for_heat[roomlvl]) == 0:
-                                                fin_rooms[roomid] = 1
-                                            if solved == 1000 and len(heat_roster[roomid]) != couples_per_ballroom:
-                                                fin_rooms[roomid] = 2  # Forced finish
-                                            if consecutive == 1000 and (heat_list.getLevelHeatCount(roomlvl) == 0): # if conflicts and no previous heats
-                                                fin_rooms[roomid] = 2  # Forced finish
-                                            ''' Not sure I'll use this here will maybe use later after all is finished
-                                            # Check if levels above or below are empty as well
-                                            if dance_dfs_dict_s[curr_lev].empty:
-                                                if curr_lev == AB and curr_lev-1 in dance_dfs_dict_s:
-                                                    if dance_dfs_dict_s[curr_lev+1].empty:
-                                                        fin_rooms[roomid] = 1
-                                                if curr_lev > AB and dance_dfs_dict_s[curr_lev-1].empty:
-                                                    fin_rooms[roomid] = 1
-                                            '''
-                                            # Determine if heat finished
-                                            if (fin_rooms.count(1) + fin_rooms.count(2)) == len(heat_room_levs):
-                                                selection_finished = True
-                                                if not level_mode:
-                                                    heat_finished = False
-                                                if lev_mode_selection:
-                                                    heat_finished = True
-                                            print("Candidate placed: ")
-                                            print(candidate)
-                                        else:
-                                            log.addConflict(ConflictItemSingle(2, contestantconflicts, inst, 'i'), roomlvl, roomid)
-                                            consecutive += 1
-                            # Selection finished
-                            # Update Holes metadata
-                            if not lev_mode_selection:
-                                # Add number of holes before a level mode selection
-                                for i, lvl in enumerate(heat_room_levs):
-                                    tot_holes[lvl] += couples_per_ballroom - len(heat_roster[i])
-                                    heat_holes[i] = couples_per_ballroom - len(heat_roster[i])
-                            else:
-                                # Add holes after level mode selection but only to newly filled room
-                                i = vacant_rooms # Start of the vacant rooms
-                                for lvl in level_mode_selection_lev:
-                                    tot_holes[lvl] += (couples_per_ballroom - len(heat_roster[i]))
-                                    heat_holes[i] = (couples_per_ballroom - len(heat_roster[i]))
-                                    i += 1
-                            # If levels < ballrooms, figure out if the current selection pool can be put into open room(s)
-                            if level_mode:
-                                # Loop over all rooms in heat
-                                for vacant in heat_roster:
-                                    if len(vacant) > 0:  # If room is already in use, continue loop
+                                            break
+                                        if selection.count(inst) > 0:  # Check if instructor is being used in heat
+                                            instructor_taken = True
+                                            break
+                                    if instructor_taken:
+                                        cons = getContestantConflictList(dfs_for_heat[roomid], inst, singles_in_heat)
+                                        log.addConflict(ConflictItemSingle(1, cons, inst, 'e'), info, roomid)
+                                        consecutive += 1
                                         continue
-                                    if not_possible:
-                                        print(key + "level mode assigning or splitting not possible")
-                                        heat_finished = True
-                                        break
-                                    assigned = False
-                                    looped = False
-                                    i = 0
-                                    # Choose the highest level whose holes will not exceed Couples pool for that level
-                                    while not assigned:
-                                        # if looped fully, consider splitting a level now
-                                        if i > len(decend_level_c):
-                                            if looped:
-                                                not_possible = True
-                                                break
-                                            i = 0
-                                            looped = True
-                                        possible_largest = decend_level_c[i][0]
-                                        couples_for_lev = dance_dfs_dict_c[possible_largest]
-                                        placeable_couples = len(instructors_available_for_heat[possible_largest])
-                                        if placeable_couples >= couples_per_ballroom:
-                                            pot_added_holes = 0
+                                # Find a single to pair with this instructor
+                                    '''
+                                    possible_singles = dance_dfs_dict_s[curr_lev]
+                                    for row, contestant in possible_singles.iterows():
+                                        for _list in contestant["Instructor Dancer #'s"]:
+                                            found = False
+                                            for num in _list:
+                                                if num == inst:
+                                                    found = True
+                                                    break
+                                            if not found:
+                                                possible_singles.drop(possible_singles.index[row])
+                                    possible_singles = dance_dfs_dict_s[curr_lev][dance_dfs_dict_s[curr_lev].loc[:,"Instructor Dancer #'s"].count(inst) > 0]
+                                    '''
+                                    found = False
+                                    # Loop over each row in the df for this level
+                                    df_shuffled = dfs_for_heat[roomid].sample(frac=1)
+                                    for row, entry in df_shuffled.iterrows():
+                                        next_contestant = False
+                                        if found:
+                                            break
+                                        # Set column variables based on single type
+                                        if entry["type id"] == "L":
+                                            contestant_col = "Lead Dancer #"
+                                            inst_col = "Follow Dancer #"
+                                            inst_fname = "Follow First Name"
+                                            inst_lname = "Follow Last Name"
+                                        elif entry["type id"] == "F":
+                                            contestant_col = "Follow Dancer #"
+                                            inst_col = "Lead Dancer #"
+                                            inst_fname = "Lead First Name"
+                                            inst_lname = "Lead Last Name"
                                         else:
-                                            pot_added_holes = couples_per_ballroom - placeable_couples
-                                        # Sanity check for level to work at all
-                                        if (tot_holes[possible_largest] + pot_added_holes) <= (couples_for_lev + 3):
-                                            # If level is being used consider other levels first
-                                            if heat_room_levs.count(possible_largest) > 0 and (not looped):
-                                                i += 1
-                                                continue
-                                            # TODO: add a check here to internal vs external conflict if too high external then instructors will likely not get a match
-                                            assigned = True
-                                            # Metadata for filling in holes metadata
-                                            level_mode_selection_lev.append(possible_largest)
-                                            heat_room_levs.append(possible_largest)
-                                            # If there are Instructors left and the room was not forced to end
-                                            if placeable_couples > 0:
-                                                if fin_rooms[heat_room_levs.index(possible_largest)] == 1:
-                                                    fin_rooms.append(0)
-                                                elif fin_rooms[heat_room_levs.index(possible_largest)] == 2:
-                                                    fin_rooms.append(2)
-                                                    heat_finished = True
+                                            raise Exception("Type id for " + entry + " is invalid")
+                                        # Retrofit the instructor list entry
+                                        if type(entry["Instructor Dancer #'s"]) == int:
+                                            tmp = [entry["Instructor Dancer #'s"]]
+                                        else:
+                                            tmp = [int(x) for x in entry["Instructor Dancer #'s"].split(";")]
+                                        entry["Instructor Dancer #'s"] = tmp
+                                        del tmp
+                                        # Loop over the instructor list for the contestant row
+                                        for num in entry["Instructor Dancer #'s"]:
+                                            if num == inst:
+                                                for i, rost in enumerate(singles_in_heat):
+                                                    if rost.count(entry[contestant_col]) > 0:
+                                                        contestantconflicts.append(entry[contestant_col])
+                                                        next_contestant = True
+                                                if not next_contestant:
+                                                    # Set candidate to this single/inst match
+                                                    candidate = entry.to_frame().T
+                                                    candidate = candidate.reset_index(drop=True)
+                                                    instructor_data = df_inst[df_inst["Dancer #"] == inst].reset_index(drop=True)
+                                                    candidate.loc[0, inst_col] = instructor_data.loc[0, "Dancer #"]
+                                                    candidate.loc[0, inst_fname] = instructor_data.loc[0, "First Name"]
+                                                    candidate.loc[0, inst_lname] = instructor_data.loc[0, "Last Name"]
+                                                    found = True
+                                                    break
+                                    if found:
+                                        # Remove/add to tracking data structs
+                                        instructors_in_heat[roomid].append(inst)
+                                        instructor_heat_list.append(inst)
+                                        singles_in_heat[roomid].append(candidate.loc[0, contestant_col])
+                                        heat_roster[roomid].append(candidate)
+                                        instructors_available_for_heat[roomid].remove(inst)
+                                        print("Candidate placed: ")
+                                        print(candidate.loc[0,contestant_col])
+                                        print(roomid, floor_info)
+                                        print("Deleting from inst tree")
+                                        for num in candidate.loc[:, "Instructor Dancer #'s"][0]:
+                                            if inst_tree_nodes[roomid][num] == 1:
+                                                del inst_tree_nodes[roomid][num]
+                                                if num in instructors_available_for_heat[roomid]:
+                                                    instructors_available_for_heat[roomid].remove(num)
                                             else:
-                                                heat_finished = True
+                                                inst_tree_nodes[roomid][num] -= 1
+                                        # Remove the placed candidate from the df, or -1 if multi-entry
+                                        print("Deleting from dancer df")
+                                        print()
+                                        if candidate.loc[:, ev][0] == 1:
+                                            dfs_for_heat[roomid] = dfs_for_heat[roomid].drop(dfs_for_heat[roomid][dfs_for_heat[roomid][contestant_col] == candidate.loc[0, contestant_col]].index)
+                                            # Change the largest level tracker if needed
+                                            # for i, lev in enumerate(decend_level_s):
+                                            #     # Find current level in the list
+                                            #     if lev[0] == curr_lev:
+                                            #         lev[1] = lev[1] - 1
+                                            #         # If contestants are gone then remove the level
+                                            #         if lev[1] == 0:
+                                            #             decend_level_s.remove(lev)
+                                            #             break
+                                            #         # If it is not the smallest level already
+                                            #         if i < len(decend_level_s) - 1:
+                                            #             # If level is now smaller than adjacent level, swap them
+                                            #             if lev[1] < decend_level_s[i + 1][1]:
+                                            #                 tmp = decend_level_s[i + 1]
+                                            #                 decend_level_s[i + 1] = lev
+                                            #                 decend_level_s[i] = tmp
+                                            #         break
+                                        else:
+                                            dfs_for_heat[roomid].loc[dfs_for_heat[roomid].loc[:, contestant_col] == candidate.loc[0, contestant_col], ev] = candidate.loc[0, ev] - 1
+                                        placed = True
+                                        # Check if current level df is empty after a placed candidate
+                                        if dfs_for_heat[roomid].empty:
+                                            sfin_rooms[roomid] = 1
+                                            del dfs_for_heat[roomid]  # Delete df
+                                            deleteEmpty(dance_dfs)  # Remove the keys from the tree that are empty
+                                            # keys_in_s[curr_lev] = -1  # Make key location -1 to show level is empty
+                                            if dance_dfs.get("S") is None:
+                                                singles_empty = True
+                                    else:
+                                        # TODO change the con log class to track based on all keys not just lvl
+                                        log.addConflict(ConflictItemSingle(2, contestantconflicts, inst, 'i'),room_info, roomid)
+                                        consecutive += 1
+                                    if len(instructors_available_for_heat[roomid]) == 0:
+                                        pass
+                                    # Determine if room is finished
+                                    if len(heat_roster[roomid]) == couples_per_ballroom:
+                                        sfin_rooms[roomid] = 1
+                                    if singles_empty:
+                                        for i in enumerate(sfin_rooms):
+                                            if sfin_rooms[i] == 0:
+                                                sfin_rooms[i] = 1
+                                    if len(instructors_available_for_heat[roomid]) == 0:
+                                        sfin_rooms[roomid] = 1
+                                    if solved == 1000 and len(heat_roster[roomid]) != couples_per_ballroom:
+                                        sfin_rooms[roomid] = 2  # Forced finish
+                                    # TODO change the heat list class to track based on all keys not just lvl
+                                    if consecutive > 5000 and (heat_list.getDivisionHeatCount(room_info) == 0):  # if conflicts and no previous heats
+                                        print("Initial Heat for ", room_info, " forced finish")
+                                        print("df size:", dfs_for_heat[roomid].shape[0])
+                                        print("roster:", heat_roster[roomid])
+                                        sfin_rooms[roomid] = 2  # Forced finish
+                                        ''' Not sure I'll use this here will maybe use later after all is finished
+                                        # Check if levels above or below are empty as well
+                                        if dance_dfs_dict_s[curr_lev].empty:
+                                            if curr_lev == AB and curr_lev-1 in dance_dfs_dict_s:
+                                                if dance_dfs_dict_s[curr_lev+1].empty:
+                                                    fin_rooms[roomid] = 1
+                                            if curr_lev > AB and dance_dfs_dict_s[curr_lev-1].empty:
+                                                fin_rooms[roomid] = 1
+                                        '''
+                                    # Determine if heat finished
+                                    if (sfin_rooms.count(1) + sfin_rooms.count(2)) == len(s_floors):
+                                        selection_finished = True
+                                        # if not split_mode:
+                                        #     heat_finished = False
+                                        # if lev_mode_selection:
+                                        #     heat_finished = True
+
+                        # selection_dfs.append(dfs_for_heat[:])
+                            # Selection finished
+                            # # Update Holes metadata
+                            # if not lev_mode_selection:
+                            #     pass
+                            #     # # Add number of holes before a level mode selection
+                            #     # for i, lvl in enumerate(heat_room_levs):
+                            #     #     tot_holes[lvl] += couples_per_ballroom - len(heat_roster[i])
+                            #     #     heat_holes[i] = couples_per_ballroom - len(heat_roster[i])
+                            # else:
+                            #     # Add holes after level mode selection but only to newly filled room
+                            #     i = vacant_rooms  # Start of the vacant rooms
+                            #     for lvl in level_mode_selection_lev:
+                            #         tot_holes[lvl] += (couples_per_ballroom - len(heat_roster[i]))
+                            #         heat_holes[i] = (couples_per_ballroom - len(heat_roster[i]))
+                            #         i += 1
+
                         # Heat fully complete Construct key for the new heat
                         # Fill the unused room data if needed
-                        if len(heat_room_levs) < ballrooms:
-                            for i in range(ballrooms-len(heat_room_levs)):
-                                heat_room_levs.append(-1)
-                                heat_holes.append(couples_per_ballroom)
-                        # Create heat obj
-                        heat = Heat(key, heat_room_levs, heat_roster, heat_holes, singles_in_heat, instructors_in_heat, [])
-                        heat_list.appendList(heat)  # add completed heat to the HeatList obj
-                        dance_heat_count += 1
-                        tot_current_heats += 1
-                        if tot_current_heats > max_heats:
-                            print("Exceeded max heats for event time metrics")
-                    # ---------------------------------------------- Couples -------------------------------------------
-                    # TODO: while loop the ends when couples df is empty
-                    #  first loop over heatlist and fill the holes currently there, making any swaps with the conflict resolver
-                    #  then start making couple only heats, much of the code can be reused for couples but much less complicated
-                    singles_index = 0  # Iterator, tracks location in the previously built heats
-                    backfill_mode = True  # Indicates when all backfilling is complete
-                    while len(dance_dfs_dict_c) > 0 or couple_empty: # While couples still have contestants
-                        heat_finished = False
-                        while not heat_finished: # TODO: Don't think this while loop is needed
+                        # if len(heat_room_levs) < ballrooms:
+                        #     for i in range(ballrooms-len(heat_room_levs)):
+                        #         heat_room_levs.append(-1)
+                        #         heat_holes.append(couples_per_ballroom)
+                        # Update Dance dfs with all placements
+                        for df, info in zip(dfs_for_heat, s_floors):
+                            dance_dfs = updateDanceDfs(dance_dfs, df, info)
+                        # ---------------------------------------------- Couples ---------------------------------------
+                        # TODO: while loop the ends when couples df is empty
+                        #  first loop over heatlist and fill the holes currently there, making any swaps with the conflict resolver
+                        #  then start making couple only heats, much of the code can be reused for couples but much less complicated
+                        # singles_index = 0  # Iterator, tracks location in the previously built heats
+                        # backfill_mode = True  # Indicates when all backfilling is complete
+                        if len(c_floors) > 0:  # if a couples key has been picked
+                            dfs_for_heat = []
+                            for roomid, info in enumerate(c_floors):
+                                for i, key in enumerate(info):
+                                    if i == 0:
+                                        tmp = dance_dfs[key]
+                                        continue
+                                    if type(tmp) is dict:
+                                        tmp = tmp[key]
+                                dfs_for_heat.append(tmp)
                             # Check if all backfill-ed heats are completed
-                            if singles_index >= heat_list.getHeatCount():
-                                backfill_mode = False
+                            # if singles_index >= heat_list.getHeatCount():
+                            #     backfill_mode = False
                             # backfill mode pre-selection processing, get all tracking metadata from preexisting heat
-                            if backfill_mode:
-                                # Check if heat has holes from Singles Selection to backfill
-                                heat_to_fill = heat_list.getRostersList()[singles_index]
-                                if heat_to_fill.getHoles().count(0) == ballrooms:
-                                    singles_index += 1
-                                    continue
-                                # get levels that need to be backfilled and add them to heat room levels
-                                for lev, holes in zip(heat_to_fill.getLevels(), heat_to_fill.getHoles()):
-                                    # Fill in metadata about preexisting heat
-                                    heat_room_levs.append(lev)
-                                    for instruts in heat_to_fill.getInstructors():
-                                        instructors_in_heat.append(instruts[:])
-                                    for dancers in heat_to_fill.getSingles():
-                                        singles_in_heat.append(dancers[:])
-                                    for entry in heat_to_fill.getRoster():
-                                        heat_roster.append(entry[:])
-                                    # Check if there are holes in the room declare if room is finished or not
-                                    if holes > 0:
-                                        fin_rooms.append(0)
-                                    else:
-                                        fin_rooms.append(1)
-                            else: # backfill completed
-                                pass
-                                # TODO: count levels left in dance dfs c use singles code as a copy to assign levels to rooms
+                            # if backfill_mode:
+                            #     # Check if heat has holes from Singles Selection to backfill
+                            #     heat_to_fill = heat_list.getRostersList()[singles_index]
+                            #     if heat_to_fill.getHoles().count(0) == ballrooms:
+                            #         singles_index += 1
+                            #         continue
+                            #     # get levels that need to be backfilled and add them to heat room levels
+                            #     for lev, holes in zip(heat_to_fill.getLevels(), heat_to_fill.getHoles()):
+                            #         # Fill in metadata about preexisting heat
+                            #         heat_room_levs.append(lev)
+                            #         for instruts in heat_to_fill.getInstructors():
+                            #             instructors_in_heat.append(instruts[:])
+                            #         for dancers in heat_to_fill.getSingles():
+                            #             singles_in_heat.append(dancers[:])
+                            #         for entry in heat_to_fill.getRoster():
+                            #             heat_roster.append(entry[:])
+                            #         # Check if there are holes in the room declare if room is finished or not
+                            #         if holes > 0:
+                            #             fin_rooms.append(0)
+                            #         else:
+                            #             fin_rooms.append(1)
+                            # else:  # backfill completed
+                            #     pass
                             # Loop rooms, backfill or filling new room to completion before moving to the next room
-                            for roomid, roomlvl in enumerate(heat_room_levs):
+                            for roomid, room_info in enumerate(c_floors):
                                 # If room finished
-                                if fin_rooms[roomid] > 0:
+                                if cfin_rooms[roomid] > 0:
                                     continue
                                 # Make list to hold a placed contestant entry data
-                                if backfill_mode: # get the existing roster for this heat to backfill
-                                    curr_heat = heat_roster[roomid]
-                                else: # If a new heat make a blank list
-                                    curr_heat = []
-                                curr_lev = roomlvl # Set roomlvl as current (because I don't want to change var name)
+                                # if backfill_mode: # get the existing roster for this heat to backfill
+                                #     curr_heat = heat_roster[roomid]
+                                # else: # If a new heat make a blank list
+                                #     curr_heat = []
+                                # curr_lev = roomlvl  # Set roomlvl as current (because I don't want to change var name)
                                 consecutive = 0  # Stops infinite looping continual failed attempts to add candidate to the heat
                                 solved = 0  # counts how many resolveConflict() calls for this heat
                                 done = False  # Used when a heat conflict cannot be resolved and stops selection for that heat
-                                # Get suitable candidates from the df of the current level (AB, FB, etc)
-                                while (len(curr_heat) < max_dance_couples) | (not goto_next_dance) | (not done):
-
-                                    # if consecutive > 1000:
-                                    #     if solved < 1000:
-                                    #         #if resolveConflict(curr_heat, dance_dfs_dict_c, conflcitlist, heat_roster, solved):
-                                    #          #   solved += 1
-                                    #     else:
-                                    #         pass
-                                            # TODO: compare what is left to max heat size, if much greater re-roll or done and continue if it happens again this category may be doinked, if much less there are some options: 'done' the heat continue building,
+                                # Get suitable candidates from the df of the current division
+                                if len(s_floors) > 0:
+                                    singles_index = len(s_floors)-1
+                                else:
+                                    singles_index = 0
+                                while len(heat_roster[roomid+singles_index]) < max_dance_couples and (not done):
+                                    if consecutive > 5000:
+                                        print(info, dfs_for_heat[roomid].shape[0], dance_heat_count)
+                                        break
+                                        # if solved < 1000:
+                                        #      if resolveConflict(curr_heat, dance_dfs_dict_c, conflcitlist, heat_roster, solved):
+                                        #         solved += 1
+                                        # else:
+                                        #     pass
+                                            # TODO: compare what is left to max heat size, if much greater re-roll or done and continue if it happens again this category may be doinked,
+                                            #  if much less there are some options: 'done' the heat continue building,
                                             #  add the pool to next level df and build from there,
 
                                     # TODO: Add Conflict resolution code check notebook for concepts, much less robust than before with single and couple split
-                                    candidate = dance_dfs_dict_c[curr_lev].sample() # Pick out random entry from df, may need to have try catch
+                                    candidate = dfs_for_heat[roomid].sample(ignore_index=True)  # Pick out random entry from df, may need to have try catch
                                     added = False
                                     # Check candidate has no one already in heat
                                     dup_sing = False
                                     dup_inst = False
                                     dup_coup = False
-                                    if candidate.loc[:, 'type id'][0] == 'C':
-                                        number = candidate.loc[:, 'Lead Dancer #'][0]
-                                        fnumber = candidate.loc[:, 'Follow Dancer #'][0]
+                                    if candidate.loc[0, 'type id'] == 'C':
+                                        number = candidate.loc[0, 'Lead Dancer #']
+                                        fnumber = candidate.loc[0, 'Follow Dancer #']
+                                        # TODO copy this section to 'A' as well
                                         # Check contestants in heat
                                         for selection in singles_in_heat:
                                             if dup_sing:
@@ -961,7 +1057,7 @@ def partitionData():
                                             if selection.count(fnumber) > 0:  # Check if Follow is being used in heat
                                                 dup_inst = True
                                                 break
-                                        # Check Instructors in heat
+                                        # Check couples in heat
                                         for selection in couples_in_heat:
                                             if dup_coup:
                                                 break
@@ -983,7 +1079,7 @@ def partitionData():
                                             pass
                                         if dup_inst:
                                             pass
-                                        continue
+                                    # TODO move to 'A' code
                                     # # Check if instructor inside heat, only for Singles
                                     # if candidate.loc[:, 'type id'][0] != "C":  # if not a couple entry
                                     #     # Set which column will be used based on Leader or Follower single
@@ -998,7 +1094,7 @@ def partitionData():
                                     #     # add to heat roster and instructors_in_heat
                                     #     for inst in potential_instructors:
                                     #         found = False
-                                    #         # TODO: this will be removed and greedy will work fine as if there is a later conflict I can simply swap the inst in the heat or just remove it.
+                                    #
                                     #         for lev in instructors_in_heat:
                                     #             if lev.count(inst) != 0:
                                     #                 found = True
@@ -1008,116 +1104,222 @@ def partitionData():
                                     #             added = True
                                     #             break
                                     # instructors_in_heat[roomlvl].append(-1)
-
-                                    added = True
-                                    # if candidate possible add to the roster,remove that entry from the query
-                                    curr_heat.append(candidate)
-                                    col = "Lead Dancer #"
-                                    fcol = "Follow Dancer #"
-                                    # if last or only entry remove it from query_df
-                                    if candidate.loc[:, ev][0] == 1:
-                                        dance_dfs_dict_c[curr_lev] = dance_dfs_dict_c[curr_lev][dance_dfs_dict_c[curr_lev].loc[:,col] != candidate.loc[0, col]]
-                                    else:
-                                        dance_dfs_dict_c[curr_lev].loc[dance_dfs_dict_c[curr_lev].loc[:, col] == candidate.loc[:, col][0], [ev]] = candidate.loc[:, ev][0] - 1
-                                    # Add candidate data to tracker lists
-                                    couples_in_heat[roomid].append(candidate.loc[:, col][0])
-                                    couples_in_heat[roomid].append(candidate.loc[:, fcol][0])
-                                    # Check if current df is empty after adding the candidate
-                                    if dance_dfs_dict_c[curr_lev].empty:
-                                        del dance_dfs_dict_c[curr_lev]  # Delete df
-                                        keys_in_c[curr_lev] = -1  # Make key location -1 to show level is empty
-                                        if keys_in_c.count(-1) == 6:
-                                            couple_empty = True
-                                        # TODO: change current level to that level, but make sure to update the meta data correctly
-                                        # Check if current room is full, if not, see if adjacent levels are viable
-                                        if len(heat_roster[roomid]) < couples_per_ballroom and not mixed_heat:
-                                            # Decided if Lower level is valid
-                                            holes = couples_per_ballroom - len(heat_roster[roomid]) # Calculate holes
-                                            if curr_lev != AB and keys_in_c[curr_lev-1] != -1: # If lower level exists
-                                                wait_longer = True
-                                                # If lower level pool can fit inside this hole, and can still fill it's lev's holes
-                                                remaining = dance_dfs_dict_c[curr_lev - 1].shape[0]
-                                                lultimate_leftover = remaining - tot_holes[curr_lev - 1]
-                                                if couples_per_ballroom > remaining >= holes and lultimate_leftover > 0:
-                                                    # If lower level is not being selected for, or is finished selecting
-                                                    if heat_room_levs.count(curr_lev-1) == 0 or fin_rooms[heat_room_levs.index(curr_lev-1)] > 0:
-                                                        lower_valid = True
-                                            # Decide if upper level is valid
-                                            if curr_lev != FG and keys_in_c[curr_lev+1] != -1:
-                                                wait_longer = True
-                                                # If lower level pool can fit inside this hole, and can still fill it's lev's holes
-                                                remaining = dance_dfs_dict_c[curr_lev+1].shape[0]
-                                                uultimate_leftover = remaining - tot_holes[curr_lev+1]
-                                                if couples_per_ballroom > remaining >= holes and uultimate_leftover > 0:
-                                                    # If lower level is not being selected for, or is finished selecting
-                                                    if heat_room_levs.count(curr_lev+1) == 0 or fin_rooms[heat_room_levs.index(curr_lev+1)] > 0:
-                                                        upper_valid = True
-                                            # If both can work, must choose between levels
-                                            # TODO: may need to note this is a mixed level somehow, for the conflict resolver
-                                            if upper_valid and lower_valid:
-                                                mixed_heat = True
-                                                if lultimate_leftover == holes:
-                                                    curr_lev = curr_lev-1
-                                                elif uultimate_leftover == holes:
-                                                    curr_lev = curr_lev+1
-                                                else: # Choose the level that fills the most holes
-                                                    if  holes - lultimate_leftover <= holes - uultimate_leftover:
-                                                        curr_lev = curr_lev - 1
-                                                    else:
-                                                        curr_lev = curr_lev + 1
-                                            elif upper_valid:
-                                                mixed_heat = True
-                                                curr_lev = curr_lev + 1
-                                            elif lower_valid:
-                                                mixed_heat = True
-                                                curr_lev = curr_lev - 1
+                                    else:  # Else = there are no conflicts
+                                        added = True
+                                        # if candidate possible add to the roster,remove that entry from the query
+                                        heat_roster[roomid+singles_index].append(candidate)
+                                        col = "Lead Dancer #"
+                                        fcol = "Follow Dancer #"
+                                        # if last or only entry remove it from query_df
+                                        if candidate.loc[0, ev] == 1:
+                                            dfs_for_heat[roomid+singles_index] = dfs_for_heat[roomid+singles_index][dfs_for_heat[roomid+singles_index].loc[:,col] != candidate.loc[0, col]]
+                                        else:
+                                            dfs_for_heat[roomid+singles_index].loc[dfs_for_heat[roomid+singles_index].loc[:, col] == candidate.loc[0, col], [ev]] = candidate.loc[0, ev] - 1
+                                        # Add candidate data to tracker lists
+                                        couples_in_heat[roomid+singles_index].append(candidate.loc[0, col])
+                                        couples_in_heat[roomid+singles_index].append(candidate.loc[0, fcol])
+                                        # Check if current df is empty after adding the candidate
+                                        if dfs_for_heat[roomid+singles_index].empty:
+                                            del dfs_for_heat[roomid+singles_index]  # Delete df
+                                            deleteEmpty(dance_dfs) # Clean up parent levels if needed
+                                            # keys_in_c[curr_lev] = -1  # Make key location -1 to show level is empty
+                                            if dance_dfs.get("C") is None:
+                                                couples_empty = True
+                                        # # TODO: change current level to that level, but make sure to update the meta data correctly
+                                        # # Check if current room is full, if not, see if adjacent levels are viable
+                                        # if len(heat_roster[roomid]) < couples_per_ballroom and not mixed_heat:
+                                        #     # Decided if Lower level is valid
+                                        #     holes = couples_per_ballroom - len(heat_roster[roomid]) # Calculate holes
+                                        #     if curr_lev != AB and keys_in_c[curr_lev-1] != -1: # If lower level exists
+                                        #         wait_longer = True
+                                        #         # If lower level pool can fit inside this hole, and can still fill it's lev's holes
+                                        #         remaining = dance_dfs_dict_c[curr_lev - 1].shape[0]
+                                        #         lultimate_leftover = remaining - tot_holes[curr_lev - 1]
+                                        #         if couples_per_ballroom > remaining >= holes and lultimate_leftover > 0:
+                                        #             # If lower level is not being selected for, or is finished selecting
+                                        #             if heat_room_levs.count(curr_lev-1) == 0 or fin_rooms[heat_room_levs.index(curr_lev-1)] > 0:
+                                        #                 lower_valid = True
+                                        #     # Decide if upper level is valid
+                                        #     if curr_lev != FG and keys_in_c[curr_lev+1] != -1:
+                                        #         wait_longer = True
+                                        #         # If lower level pool can fit inside this hole, and can still fill it's lev's holes
+                                        #         remaining = dance_dfs_dict_c[curr_lev+1].shape[0]
+                                        #         uultimate_leftover = remaining - tot_holes[curr_lev+1]
+                                        #         if couples_per_ballroom > remaining >= holes and uultimate_leftover > 0:
+                                        #             # If lower level is not being selected for, or is finished selecting
+                                        #             if heat_room_levs.count(curr_lev+1) == 0 or fin_rooms[heat_room_levs.index(curr_lev+1)] > 0:
+                                        #                 upper_valid = True
+                                        #     # If both can work, must choose between levels
+                                        #     # TODO: may need to note this is a mixed level somehow, for the conflict resolver
+                                        #     if upper_valid and lower_valid:
+                                        #         mixed_heat = True
+                                        #         if lultimate_leftover == holes:
+                                        #             curr_lev = curr_lev-1
+                                        #         elif uultimate_leftover == holes:
+                                        #             curr_lev = curr_lev+1
+                                        #         else: # Choose the level that fills the most holes
+                                        #             if  holes - lultimate_leftover <= holes - uultimate_leftover:
+                                        #                 curr_lev = curr_lev - 1
+                                        #             else:
+                                        #                 curr_lev = curr_lev + 1
+                                        #     elif upper_valid:
+                                        #         mixed_heat = True
+                                        #         curr_lev = curr_lev + 1
+                                        #     elif lower_valid:
+                                        #         mixed_heat = True
+                                        #         curr_lev = curr_lev - 1
+                                        #     else:
+                                        #         if wait_longer:
+                                        #             if backfill_mode:
+                                        #                 heatid = singles_index
+                                        #             else:
+                                        #                 heatid = dance_heat_count
+                                        #             unideal_heats.append([heatid, roomlvl, holes])
+                                        #         else: # if neither are valid nor is there enough to wait longer
+                                        #             fin_rooms[roomid] = 1
+                                        #     # Determine if room is finished
+                                        #     if couple_empty:
+                                        #         for i in enumerate(heat_room_levs):
+                                        #             fin_rooms[i] = 1
+                                        #     if len(heat_roster[roomid]) == couples_per_ballroom:
+                                        #         fin_rooms[roomid] = 1
+                                        #         # TODO: add check here to see if unideal heats has a valid option only if leftover < couples_per_ballroom
+                                        #         if dance_dfs_dict_c[curr_lev].shape[0] < couples_per_ballroom:
+                                        #             for heat in unideal_heats:
+                                        #                 if heat[1] == curr_heat+1 or heat[1] == curr_heat-1:
+                                        #                     if heat[2] <= dance_dfs_dict_c.shape[0]:
+                                        #                         pass
+                                        #                         # TODO: run a method here, to fill in the preexisting heat?
+                                    if couples_empty:
+                                        for i in enumerate(cfin_rooms):
+                                            if cfin_rooms[i] == 0:
+                                                cfin_rooms[i] = 1
+                                    if solved == 1000 and len(heat_roster[roomid+singles_index]) != couples_per_ballroom:
+                                        cfin_rooms[roomid] = 2  # Forced finish
+                                    if consecutive == 5000 and (heat_list.getDivisionHeatCount(room_info) == 0):  # if conflicts and no previous heats
+                                        cfin_rooms[roomid] = 2  # Forced finish
+                                    # # Check if levels above or below are empty as well
+                                    # if dance_dfs_dict_s[curr_lev].empty:
+                                    #     if curr_lev == AB and curr_lev-1 in dance_dfs_dict_s:
+                                    #         if dance_dfs_dict_s[curr_lev+1].empty:
+                                    #             fin_rooms[roomid] = 1
+                                    #     if curr_lev > AB and dance_dfs_dict_s[curr_lev-1].empty:
+                                    #         fin_rooms[roomid] = 1
+                                    # Determine if heat finished
+                                    if len(heat_roster[roomid+singles_index]) == couples_per_ballroom:
+                                        cfin_rooms[roomid] = 1
+                                        # TODO add this to singles
+                                        if dfs_for_heat[roomid].shape[0] < int(couples_per_ballroom/2):
+                                            if dfs_for_heat[roomid][ev].sum() < heat_list.getDivisionHeatCount()*2:
+                                                backfill(dfs_for_heat[roomid], room_info, heat_list, df_inst)
+                                                deleteEmpty(dfs_for_heat)
                                             else:
-                                                if wait_longer:
-                                                    if backfill_mode:
-                                                        heatid = singles_index
-                                                    else:
-                                                        heatid = dance_heat_count
-                                                    unideal_heats.append([heatid, roomlvl, holes])
-                                                else: # if neither are valid nor is there enough to wait longer
-                                                    fin_rooms[roomid] = 1
-                                            # Determine if room is finished
-                                            if couple_empty:
-                                                for i in enumerate(heat_room_levs):
-                                                    fin_rooms[i] = 1
-                                            if len(heat_roster[roomid]) == couples_per_ballroom:
-                                                fin_rooms[roomid] = 1
-                                                # TODO: add check here to see if unideal heats has a valid option only if leftover < couples_per_ballroom
-                                                if dance_dfs_dict_c[curr_lev].shape[0] < couples_per_ballroom:
-                                                    for heat in unideal_heats:
-                                                        if heat[1] == curr_heat+1 or heat[1] == curr_heat-1:
-                                                            if heat[2] <= dance_dfs_dict_c.shape[0]:
-                                                                pass
-                                                                # TODO: run a method here, to fill in the preexisting heat?
-                                            if solved == 1000 and len(heat_roster[roomid]) != couples_per_ballroom:
-                                                fin_rooms[roomid] = 2  # Forced finish
-                                            # if consecutive == 1000 and (heat_list.getLevelHeatCount(roomlvl) == 0):  # if conflicts and no previous heats
-                                            #     fin_rooms[roomid] = 2  # Forced finish
-                                            # Check if levels above or below are empty as well
-                                            if dance_dfs_dict_s[curr_lev].empty:
-                                                if curr_lev == AB and curr_lev-1 in dance_dfs_dict_s:
-                                                    if dance_dfs_dict_s[curr_lev+1].empty:
-                                                        fin_rooms[roomid] = 1
-                                                if curr_lev > AB and dance_dfs_dict_s[curr_lev-1].empty:
-                                                    fin_rooms[roomid] = 1
-                                            # Determine if heat finished
-                                            if (fin_rooms.count(1) + fin_rooms.count(2)) == len(heat_room_levs):
-                                                selection_finished = True
-                                                if not level_mode:
-                                                    heat_finished = False
-                                                if lev_mode_selection:
-                                                    heat_finished = True
-                            heat_roster.append(curr_heat)  # add this individual heat to roster list
-                        # TODO: make the df suited for printing on the excel output, and add the single and couple dfs together
-                    key = each + '-' + every + '-' + ev + '-' + len(heat_list.getHeatCount())
-                    heat = Heat(key, 0, heat_roster, instructors_in_heat)
-                    heat_list.appendList(heat)
-                    tot_current_heats += 1
+                                                print("Not enough heats to backfill")
+                                        break
+                                    if (cfin_rooms.count(1) + cfin_rooms.count(2)) == len(c_floors):
+                                        break
+                            for df, info in zip(dfs_for_heat, c_floors):
+                                dance_dfs = updateDanceDfs(dance_dfs, df, info)
+    # ------------------------------------------------- Double up on unused rooms --------------------------------------
+                        # If levels < ballrooms and not in split mode already, figure out if the current selection pool can be put into open room(s)
+                        if len(floor_info) < floors and not split_mode:
+                            # Sanity Check all the current floors
+                            splits = []
+                            for i, info in enumerate(room_info):
+                                # Find meta data for singles list
+                                if info[0] == "S":
+                                    # Find the leftover instructors
+                                    # leftover_inst = []
+                                    # for inst in instructors_available_for_heat[i]:
+                                    #     if inst not in instructor_heat_list:
+                                    #         leftover_inst.append(inst)
+                                    unique = findUnique(pre_inst_tree, s_floors, [])
+                                    if not unique > couples_per_ballroom*2:  # If room cannot be split due to instructor constraints
+                                        continue
+                                    count = findContestantCount(dance_dfs, info)
+                                    # if len(leftover_inst) < count:
+                                    #     count = len(leftover_inst)
+                                else:
+                                    count = findContestantCount(dance_dfs, info)
+                                for i, split in enumerate(splits):  # order largest to smallest count
+                                    if split[1] > count:
+                                        continue
+                                    else:
+                                        splits.insert(i, [info, count])
+                            # Loop over all rooms in heat
+                            for vacant in heat_roster:
+                                if len(vacant) > 0:  # If room is already in use, continue loop
+                                    continue
+                                if len(splits) == 0:
+                                    print(key + "level mode assigning or splitting not possible")
+                                    heat_finished = True
+                                    break
+                                assigned = False
+                                looped = False
+                                i = 0
+                                # Choose the highest level whose holes will not exceed Couples pool for that level
+                                floor_info.append(info)
+                                if 't' in div or 'T' in div:
+                                    if floor_info[-1] == "S":
+                                        s_floors.append(floor_info[-1])
+                                        sfin_rooms.append(0)
+                                    else:
+                                        c_floors.append(floor_info[-1])
+                                        cfin_rooms.append(0)
+                                split = True
+                            if not split:
+                                heat_finished = True
+                            else:
+                                split_mode = True
+                        else:
+                            heat_finished = True
+                            # # TODO Check each of the current divisions use find unique if it is a single and find contestant count
+                            # #  if it is a couple figure out the numer of unique couples and how many are left
+                            # #  pick the largest of those until full, add them to room info and then loop back to beginning of selection
+                            # #  if cannot make it work then move on
+                            # while not assigned:
+                            #     # if looped fully, consider splitting a level now
+                            #     if i > len(decend_level_c):
+                            #         if looped:
+                            #             not_possible = True
+                            #             break
+                            #         i = 0
+                            #         looped = True
+                            #     possible_largest = decend_level_c[i][0]
+                            #     couples_for_lev = dance_dfs_dict_c[possible_largest]
+                            #     placeable_couples = len(instructors_available_for_heat[possible_largest])
+                            #     if placeable_couples >= couples_per_ballroom:
+                            #         pot_added_holes = 0
+                            #     else:
+                            #         pot_added_holes = couples_per_ballroom - placeable_couples
+                            #     # Sanity check for level to work at all
+                            #     if (tot_holes[possible_largest] + pot_added_holes) <= (couples_for_lev + 3):
+                            #         # If level is being used consider other levels first
+                            #         if heat_room_levs.count(possible_largest) > 0 and (not looped):
+                            #             i += 1
+                            #             continue
+                            #         # TODO: add a check here to internal vs external conflict if too high external then instructors will likely not get a match
+                            #         assigned = True
+                            #         # Metadata for filling in holes metadata
+                            #         level_mode_selection_lev.append(possible_largest)
+                            #         heat_room_levs.append(possible_largest)
+                            #         # If there are Instructors left and the room was not forced to end
+                            #         if placeable_couples > 0:
+                            #             if fin_rooms[heat_room_levs.index(possible_largest)] == 1:
+                            #                 fin_rooms.append(0)
+                            #             elif fin_rooms[heat_room_levs.index(possible_largest)] == 2:
+                            #                 fin_rooms.append(2)
+                            #                 heat_finished = True
+                            #         else:
+                            #             heat_finished = True
+                    heat = Heat(heat_key, floor_info, heat_roster, singles_in_heat, instructors_in_heat, couples_in_heat)
+                    heat_list.appendList(heat)  # add completed heat to the HeatList obj
+                    split_mode = False
                     dance_heat_count += 1
+                    tot_current_heats += 1
+                    if tot_current_heats > max_heats:
+                        print("Exceeded max heats for event time metrics")
+            heats[each][every][ev] = heat_list
     buildEvent()
     print("Hello World")
 
@@ -1173,31 +1375,83 @@ def sliceDfs(df_sing, df_coup):
 '''
 
 def buildEvent(heats, ballrooms, eventName):
-    wb = openpyxl.Workbook()
-    wb.save(eventName + '.xlsx')
-    rowindex = 1
-    file = os.getcwd() + eventName + '.xlsx'
-    for each in heats: # For each genre
-        for every in heats[each]: # For every syllabus category
-            wb.create_sheet(title=every+''+each)
-            rowindex = 1
-            keys = heats[each][every].keys() # Create list of keys
-            while heats[each][every] != "": # While open or closed is not empty
-                key = keys[0] # Print all heats for that key,TODO can make this random in future for day planning
-                iterator = 0
-                rosters = heats[each][every][key].getRostersList()
-                level_bp = heats[each][every][key].getLevelBreakPoints()
-                count = heats[each][every][key].getHeatCount()
-                for rooms in range(ballrooms): # For each ballroom print out a heat, TODO: may need a -1
-                    sheet = wb.get_sheet_by_name(every+''+each)
-                    sheet['A'+str(rowindex)] = 'Ballroom' + str(rooms+65)
-                    rowindex += 1
-                    # Start at the lowest level and iterate until all rooms filed
-                    # if highest level reached start at lowest again
-                    with ExcelWriter(file, mode='a') as writer:
-                        pass
 
-def resolveConflict(curr_heat, dance_dfs_dict, conflcitlist, heat_roster, solved):
+    rowindex = 1
+    # file = os.getcwd() + eventName + '.xlsx'
+    for each in heats:  # For each genre
+        # Create a new directory
+        try:
+            filepath = os.getcwd().replace('\src', "") + "\Output" + "\\" + each
+            os.mkdir(filepath)
+            wb = openpyxl.Workbook()
+            excelfile = eventName + '_' + each + '.xlsx'
+            wb.save(eventName + '_' + each + '.xlsx')
+        except:
+            pass
+        for every in heats[each]:  # For every syllabus category
+            rowindex = 1
+            keys = heats[each][every].keys()  # Create list of keys
+            wb.create_sheet(title=keys[0])
+            while heats[each][every] != "":  # While open or closed is not empty
+                heatslist = heats[each][every][keys[0]] # Print all heats for that key,TODO can make this random in future for day planning
+                iterator = 0
+                rosters = heatslist.getRostersList()
+                couples_per_floor = heatslist
+                # level_bp = heats[each][every][key].getLevelBreakPoints()
+                count = heatslist.getHeatCount()
+                for room in range(heatslist.getFloors()):  # For each ballroom print out a heat, TODO: may need a -1
+                    sheet = wb.get_sheet_by_name(keys[0])
+                    sheet['A'+str(rowindex)] = 'Ballroom ' + chr(room)
+                    rowindex += 1
+                    startingrow = rowindex
+                    # print out each contestant, formatting df to relevant columns
+                    with ExcelWriter(filepath + excelfile, mode='a') as writer:
+                        cols = ['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name',
+                                'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Level', 'School']
+                        for contestant in rosters[room]:
+                            contestant.to_excel(writer, sheet_name=keys[0], startrow=rowindex, columns=cols, index=False)
+                            rowindex += 1
+                    # go over the printed rows and highlight cells for easy identify
+                        for i in range(rowindex-startingrow):
+                            index = i+startingrow
+                            idcol = 'A'
+                            if sheet[idcol+str(index)] == "L":
+                                sheet.cell[idcol+str(index)].fill = PatternFill(bgColor="00FF8080")
+                            elif sheet[idcol+str(index)] == "F":
+                                sheet.cell[idcol+str(index)].fill = PatternFill(bgColor="00FFFF00")
+                            # level color code
+                            levcol = "H"
+                            # Bronze/NC
+                            if sheet[levcol+str(index)][1] == "B" or sheet[levcol+str(index)][1] == "N":
+                                if sheet[levcol+str(index)][2] == "1" or sheet[levcol+str(index)][2] == "2" or sheet[levcol+str(index)][2] == "C":
+                                    sheet.cell[levcol+str(index)].fill = PatternFill(bgColor="00993300")
+                                if sheet[levcol+str(index)][2] == "3" or sheet[levcol+str(index)][2] == "4":
+                                    sheet.cell[levcol+str(index)].fill = PatternFill(bgColor="00800000")
+                            # Silver
+                            if sheet[levcol+str(index)][1] == "S":
+                                if sheet[levcol+str(index)][2] == "1" or sheet[levcol+str(index)][2] == "2":
+                                    sheet.cell[levcol+str(index)].fill = PatternFill(bgColor="00C0C0C0")
+                                if sheet[levcol+str(index)][2] == "3" or sheet[levcol+str(index)][2] == "4":
+                                    sheet.cell[levcol+str(index)].fill = PatternFill(bgColor="00808080")
+                            # Gold
+                            if sheet[levcol+str(index)][1] == "G":
+                                if sheet[levcol+str(index)][2] == "1" or sheet[levcol+str(index)][2] == "2":
+                                    sheet.cell[levcol+str(index)].fill = PatternFill(bgColor="00FFFF99")
+                                if sheet[levcol+str(index)][2] == "3" or sheet[levcol+str(index)][2] == "4" or sheet[levcol+str(index)][2] == "B":
+                                    sheet.cell[levcol+str(index)].fill = PatternFill(bgColor="00FFCC00")
+
+                    # add in blank rows if data < couples-per-floor
+                    if len(rosters[room]) < couples_per_floor:
+                        for i in range(len(rosters[room])-couples_per_floor):
+                            rowindex += 1
+def resolveConflict(curr_heat, dance_dfs, log, heat_roster, solved):
+    # TODo start with the mode instructor
+    #  the instructor is not free see if it can be freed by a simple swap of the instructor for that single
+    #  if not can that single be traded for a different one (check instructors for that heat for another inst)
+
+    # TODO for couples see if the mode couple can be swapped for another couple in the heat list already
+    # check the divs of the each heat list if matching check the meta data for any of the swapping numbers.
+    # if meta data is good then run swap candidate, make sure to add the returned entry after resolveConflict is returned
     if solved < 1000:
         pass
 
@@ -1236,6 +1490,13 @@ def getContestantConflictList(dance_df,inst,contestants):
             inst_lname = "Lead Last Name"
         else:
             raise Exception("Type id for " + singles + " is invalid")
+        # Retrofit the instructor list data
+        if type(singles["Instructor Dancer #'s"]) == int:
+            tmp = [singles["Instructor Dancer #'s"]]
+        else:
+            tmp = [int(x) for x in singles["Instructor Dancer #'s"].split(";")]
+        singles["Instructor Dancer #'s"] = tmp
+        del tmp
         for num in singles["Instructor Dancer #'s"]:
             if num == inst:
                 for each in contestants:
@@ -1318,3 +1579,517 @@ def calculateOverlap(decend_level_s, instructors_available_in_lev):
         overlap_data[each]["avg"] = avg/len(decend_level_s)
     overlap_data["total"] = total_count / total
     return overlap_data
+
+def deleteEmpty(dance_dfs):
+    keylist = list(dance_dfs.keys())
+    for each in keylist:
+        if type(dance_dfs[each]) is dict:
+            deleteEmpty(dance_dfs[each])
+            if len(dance_dfs[each]) == 0:  # If dict is now empty, delete it
+                del dance_dfs[each]
+        elif dance_dfs[each].empty:
+            del dance_dfs[each]
+    return dance_dfs
+
+def buildInstTree(dance_dfs, inst_tree, ev):
+    """Builds the dictionary tree of all instructors and thier count in that division
+
+           Parameters
+           ----------
+           dance_df : Pandas DataFrame
+               Current pool of single contestants
+           inst_tree : Python Dictionary
+               Tree of dictionaries key'd by the division metrics
+
+           Returns
+           -------
+           dict
+              tree of all instructor counts key'd by thier division
+           """
+    keylist = list(dance_dfs.keys())
+    for each in keylist:
+        if type(dance_dfs[each]) is dict:
+            inst_tree[each] = {}
+            buildInstTree(dance_dfs[each], inst_tree[each], ev)
+        else:
+            singles_only = dance_dfs[each][(dance_dfs[each]['type id'] == 'L') | (dance_dfs[each]['type id'] == 'F')]
+            if not singles_only.empty:
+                inst_tree[each] = {}
+                # Find unique instructors for this division
+                for row, data in singles_only.iterrows():  # Iterate down all rows of Single df
+                    if type(data["Instructor Dancer #'s"]) == int:
+                        tmp = [data["Instructor Dancer #'s"]]
+                    else:
+                        tmp = [int(x) for x in data["Instructor Dancer #'s"].split(";")]
+                    data["Instructor Dancer #'s"] = tmp
+                    del tmp
+                    for num in data["Instructor Dancer #'s"]:  # Iterate through all #'s in instructor lists
+                        if num == 1176:
+                            pass
+                        if num in inst_tree[each].keys():
+                            inst_tree[each][num] += data[ev]  # Need to add this contestant's entry number for this event
+                        else:
+                            inst_tree[each][num] = data[ev] # Need to add this contestant's entry number for this event
+    return inst_tree
+
+def pickDfs(ev, dance_dfs, inst_tree, floors, div, age_brackets, couples_per_floor):
+    l_keys = [0, 1, 2, 3, 4, 5]
+
+    if div.count('T') == 0 and div.count('t') == 0:
+        start = "A"
+    # elif "S" in dance_dfs:
+    #     start = "S"
+    else:
+        start = "C"
+
+    shell = dance_dfs[start]
+    picked_keys = []
+    picked_keys.append(start)
+    # TODO how to handel lead and follow 3 or 4 split with singles
+    while type(shell) is dict:
+        # pick = random.choice(list(shell.keys()))  # random choice
+        pick = list(shell.keys())[0]
+        picked_keys.append(pick)
+        shell = shell[pick]
+
+    # If only one floor return the key
+    if len([picked_keys]) == floors:
+        return [picked_keys]
+    unideal = []  # keys that do not meet initial conditions but if no other options will choose one of these
+    # If picked df is a single
+    if picked_keys[0] == "S":
+        iter = 1  # Iterator to track key index
+        # if divided by L and F, set labels
+        if ("S" in div) or ("s" in div):
+            same_s = "same_s"
+            opp_s = "opp_s"
+            iter += 1
+        else:  # assignment means nothing for else case only to stop compile error, since this key DNE
+            same_s = "Follow"
+            opp_s = "Lead"
+
+        # If divided by level set the same level
+        if ("L" in div) or ("l" in div):
+            same_l = picked_keys[iter]
+            diff_l = "diff_l"
+            lev_index = iter
+            iter += 1
+        else:  # assignment means nothing for else case only to stop compile error, since this key DNE
+            same_l = 0
+            diff_l = 0
+
+        # If divided by age set the same age bracket
+        if ("A" in div) or ("a" in div):
+            same_a = picked_keys[iter]
+            diff_a = "diff_a"
+            age_index = iter
+            iter += 1
+        else:  # assignment means nothing for else case only to stop compile error, since this key DNE
+            same_a = 0
+            diff_a = 0
+
+        #        Opposite Gender
+        prio_s = [["S", opp_s, same_l, same_a], ["S", opp_s, same_l, diff_a], ["S", opp_s, diff_l, same_a],
+                  ["S", opp_s, diff_l, diff_a],
+        #         Same Gender
+                  ["S", same_s, same_l, diff_a], ["S", same_s, diff_l, same_a], ["S", same_s, diff_l, diff_a],
+        #         Couples
+                  ["C", same_l, same_a], ["C", same_l, diff_a], ["C", diff_l, same_a], ["C", diff_l, diff_a]]
+        all_poss = []  # holds all possible keys to be selected, used in the case of different level or age
+        picked_keys = [picked_keys]
+        prio = 0
+        while prio < len(prio_s):
+            poss_key = []
+            iter = 1
+            # Take out unused key slots
+            if div.count('T') != 0 or div.count('t') != 0:
+                poss_key.append(prio_s[prio][0])
+            else:
+                poss_key.append("A")
+            if (div.count('s') != 0 or div.count('S') != 0) and poss_key[0] == "S":
+                if prio_s[prio][1] == "opp_s":
+                    if picked_keys[-1][iter] == "Lead":
+                        poss_key.append("Follow")
+                    else:
+                        poss_key.append("Lead")
+                else:
+                    if picked_keys[-1][iter] == "Follow":
+                        poss_key.append("Follow")
+                    else:
+                        poss_key.append("Lead")
+                iter += 1
+            if div.count('L') != 0 or div.count('l') != 0:
+                if prio_s[prio][2] != "diff_l":
+                    poss_key.append(prio_s[prio][2])
+                    all_poss.append(poss_key)
+                else:  # If different level make a key with all possible levels
+                    for lev in l_keys:  # For all level keys
+                        if lev != picked_keys[0][lev_index]:  # if not the same level, create a new possible key
+                            poss_key.append(lev)
+                            all_poss.append(poss_key)
+                            poss_key = poss_key[:-1]
+                iter += 1
+            if div.count('A') != 0 or div.count('a') != 0:
+                if len(all_poss) == 0:  # in case 'l' split is not part of this Event
+                    all_poss.append(poss_key)
+                if prio_s[prio][3] != "diff_a":
+                    for key in all_poss:
+                        key.append(prio_s[prio][3])
+                else:  # If different age make a key with all possible ages
+                    curr_all_poss = len(all_poss)
+                    agelist = age_brackets.copy()
+                    agelist.remove(picked_keys[0][age_index])
+                    # iter = 0
+                    for age in agelist:
+                        for j in range(curr_all_poss):
+                            poss_key = all_poss[j][:]
+                            poss_key.append(age)
+                            all_poss.append(poss_key)
+                    # Remove the all_poss with no age
+                    all_poss = all_poss[curr_all_poss:]
+            # Use all_poss to find out if that combo exists in the data tree
+            picked = False
+            for every in all_poss:
+                for i, key in enumerate(every):
+                    if i == 0:
+                        tmp = dance_dfs[key]
+                        continue
+                    if key not in tmp:
+                        break
+                    if type(tmp[key]) is dict:
+                        tmp = tmp[key]
+                    elif every not in picked_keys:  # add to picked list only if that key combo is not in already
+                        # if added is a single
+                        if every[0] == "S":
+                            cop = []
+                            for key in picked_keys:
+                                cop.append(key[:])
+                            # Sanity check the levels in question
+                            unique = findUnique(inst_tree, cop, every)
+                            count = findInstCount(inst_tree, every)
+                            # find # of 'singles' rooms
+                            sfloors = 0
+                            for room in picked_keys:
+                                if room[0] == "S":
+                                    sfloors += 1
+                            if every[0] == "S":
+                                sfloors += 1
+                            # if (unique >= (len(picked_keys) * couples_per_floor)-3) and (count > (couples_per_floor-2)):
+                            if unique >= (sfloors * couples_per_floor)-2:
+                                picked_keys.append(every)
+                                picked = True
+                                break
+                            else:
+                                unideal.append([every, count])
+                        else:  # if not a single
+                            count = findContestantCount(dance_dfs, every, ev)
+                            if count[0] >= couples_per_floor-2:
+                                picked_keys.append(every)
+                                picked = True
+                            else:
+                                unideal.append([every, count[1]])
+                if picked:  # If picked break
+                    picked = False
+                    prio = 1  # So I don't skip other gender prio options
+                    break
+                if every == all_poss[-1]:  # If at the end of options for this priority bracket move to another
+                    prio += 1
+            all_poss.clear()  # Once all possible keys in priority slot are not picked, clear the list
+            if len(picked_keys) == floors:
+                break
+                
+    # If picked df is a couple
+    elif picked_keys[0] == "C" or picked_keys[0] == "A":
+        iter = 1  # Iterator to track key index
+        # If divided by level set the same level
+        if ("L" in div) or ("l" in div):
+            same_l = picked_keys[iter]
+            diff_l = "diff_l"
+            lev_index = iter
+            iter += 1
+        else:  # assignment means nothing for else case only to stop compile error, since this key DNE
+            same_l = 0
+            diff_l = 0
+
+        # If divided by age set the same age bracket
+        if ("A" in div) or ("a" in div):
+            same_a = picked_keys[iter]
+            diff_a = "diff_a"
+            age_index = iter
+            iter += 1
+        else:  # assignment means nothing for else case only to stop compile error, since this key DNE
+            same_a = 0
+            diff_a = 0
+
+        # Pick priority list depending on starting key
+        if picked_keys[0] == "C":
+            #         Couples
+            prio_c = [["C", same_l, diff_a], ["C", diff_l, same_a], ["C", diff_l, diff_a],
+            #         Singles
+                      ["S", "single", same_l, same_a], ["S", "single", same_l, diff_a], ["S", "single", diff_l, same_a],
+                      ["S", "single", diff_l, diff_a]]
+        elif picked_keys[0] == "A":
+            prio_c = [["A", same_l, diff_a], ["A", diff_l, same_a], ["A", diff_l, diff_a]]
+
+        all_poss = []  # holds all possible keys to be selected, used in the case of different level or age
+        picked_keys = [picked_keys]
+        prio = 0
+        while prio < len(prio_c):
+            poss_key = []
+            iter = 1
+            # Take out unused key slots
+            if div.count('T') != 0 or div.count('t') != 0:
+                poss_key.append(prio_c[prio][0])
+            else:
+                poss_key.append("A")
+            if (div.count('s') != 0 or div.count('S') != 0) and poss_key[0] == "S":
+                poss_key.append("Lead")
+                all_poss.append(poss_key)
+                poss_key = poss_key[:-1]
+                poss_key.append("Follow")
+                all_poss.append(poss_key)
+                iter += 1
+            if div.count('L') != 0 or div.count('l') != 0:
+                if len(all_poss) == 0:  # in case 's' split is not part of this event
+                    all_poss.append(poss_key)
+                if prio_c[prio][1] != "diff_l":
+                    for key in all_poss:
+                        key.append(prio_c[prio][1])
+                else:  # If different level make a key with all possible levels
+                    curr_all_poss = len(all_poss)
+                    for lev in l_keys:  # duplicate current all_poss per different level
+                        if lev != picked_keys[0][lev_index]:
+                            for j in range(curr_all_poss):
+                                poss_key = all_poss[j][:]
+                                poss_key.append(lev)
+                                all_poss.append(poss_key)
+                    # remove first 2 keys that have no age
+                    all_poss = all_poss[curr_all_poss:]
+                iter += 1
+            if div.count('A') != 0 or div.count('a') != 0:
+                if len(all_poss) == 0:  # In case 's' split is not part of this
+                    all_poss.append(poss_key)
+                if prio_c[prio][2] != "diff_a":
+                    for key in all_poss:
+                        key.append(prio_c[prio][2])
+                else:  # If different age make a key with all existing key with all ages
+                    curr_all_poss = len(all_poss)
+                        # TODO do I make check all floors ages?
+                    agelist = age_brackets.copy()
+                    agelist.remove(picked_keys[0][age_index])
+                    for age in agelist:
+                        for j in range(curr_all_poss):
+                            poss_key = all_poss[j][:]
+                            poss_key.append(age)
+                            all_poss.append(poss_key)
+                    # Remove the all_poss with no age
+                    all_poss = all_poss[curr_all_poss:]
+
+            # Use all_poss to find out if that combo exists in the data tree
+            picked = False
+            for every in all_poss:
+                for i, key in enumerate(every):
+                    if i == 0:
+                        tmp = dance_dfs[key]
+                        continue
+                    if key not in tmp:
+                        break
+                    if type(tmp[key]) is dict:
+                        tmp = tmp[key]
+                    elif every not in picked_keys:  # add to picked list only if that key combo is not in already
+                        # if added is a single
+                        if every[0] == "S":
+                            cop = []
+                            for key in picked_keys:
+                                cop.append(key[:])
+                            # Sanity check the levels in question
+                            unique = findUnique(inst_tree, cop, every)
+                            count = findInstCount(inst_tree, every)
+                            # find # of 'singles' rooms
+                            sfloors = 0
+                            for room in picked_keys:
+                                if room[0] == "S":
+                                    sfloors += 1
+                            if every[0] == "S":
+                                sfloors += 1
+                            # if (unique >= (len(picked_keys) * couples_per_floor)-3) and (count > (couples_per_floor-2)):
+                            if unique >= (sfloors * couples_per_floor) - 2:
+                                picked_keys.append(every)
+                                picked = True
+                                break
+                            else:
+                                unideal.append([every, count])
+                        else:  # if not a single
+                            count = findContestantCount(dance_dfs, every, ev)
+                            if count[0] >= couples_per_floor - 2:
+                                picked_keys.append(every)
+                                picked = True
+                            else:
+                                unideal.append([every, count[1]])
+                if picked:  # If picked break
+                    picked = False
+                    prio = 1  # So I don't skip other gender prio options
+                    break
+                if every == all_poss[-1]:  # If at the end of options for this priority bracket move to another
+                    prio += 1
+            all_poss.clear()  # Once all possible keys in priority slot are not picked, clear the list
+            if len(picked_keys) == floors:
+                break
+
+        # If all possible keys are tried and not filled the floors try the unideal heats
+        while len(picked_keys) != floors:
+            if len(unideal) == 0:
+                break
+            largest = 0
+            largest_index = 0
+            for i, each in enumerate(unideal):
+                if each[1] > largest:
+                    largest = each[1]
+                    largest_index = i
+            picked_keys.append(unideal[largest_index])
+            del unideal[largest_index]
+    return picked_keys
+
+def findUnique(inst_tree, picked_keys, newkey):
+
+    instructors = []
+
+    picked_keys.append(newkey)
+    for each in picked_keys:
+        if each[0] != "C":
+            tmp = inst_tree[each[0]]
+            i = 1
+            while type(tmp) is dict and i < len(each):
+                tmp = tmp[each[i]]
+                i += 1
+            instructors = list(tmp.keys()) + instructors
+
+    return len(set(instructors))
+
+def findInstCount(inst_tree, newkey):
+    for i, each in enumerate(newkey):
+        if i == 0:
+            tmp = inst_tree[each]
+            continue
+        tmp = tmp[each]
+
+    return len(tmp.keys())
+
+def findContestantCount(dance_dfs, newkey, ev):
+    for i, each in enumerate(newkey):
+        if i == 0:
+            tmp = dance_dfs[each]
+            continue
+        tmp = tmp[each]
+
+    return [tmp.shape[0], tmp[ev].sum()]
+
+def updateDanceDfs(dance_dfs, df_for_heat, floor_info):
+
+
+    if type(dance_dfs[floor_info[0]]) is dict:
+        updateDanceDfs(dance_dfs[floor_info[0]], df_for_heat, floor_info[1:])
+    else:
+        dance_dfs[floor_info[0]] = df_for_heat
+    return dance_dfs
+
+def backfill(dance_df, div, heat_list, df_inst):
+    # Todo: while df has entries
+    #  loop over the heat list and find a heat that is < max
+    #  if found check the meta data,
+    #  check if contestant(s) is alreay in the heat
+    #  loop over the inst of single and strike it if it is there, if there are no inst left move on
+
+    list_index = 0
+    heats = heat_list.getRostersList()
+    heats_count = len(heats)
+    for row, data in dance_df.iterrows():
+        # Set columns to check
+        if data["type id"] == "L":
+            con_col = ["Lead Dancer Number", "Lead Dancer Number"]
+        elif data["type id"] == "F":
+            con_col = ["Follow Dancer Number", "Follow Dancer Number"]
+        else:
+            con_col = ["Lead Dancer Number", "Follow Dancer Number"]
+        # Search the list
+        placed = False
+        while (list_index < range(heats_count)):
+            # Check if heat has this division
+            try:
+                heat_list[list_index].getDiv().index(div)
+            except:
+                list_index += 1
+                break
+
+            # Check if Dancer is already in heat
+            found = False
+            for each in heats[list_index].getSingles():
+                if data[con_col[0]] in each or data[con_col[1]] in each:
+                    found = True
+                    break
+            for each in heats[list_index].getInstructors():
+                if data[con_col[0]] in each or data[con_col[1]] in each:
+                    print("While in backfill() Instructor # matches with " + data)
+                    found = True
+                    break
+            for each in heats[list_index].getCouples():
+                if data[con_col[0]] in each or data[con_col[1]] in each:
+                    found = True
+                    break
+            if found:
+                list_index += 1
+                break
+            roomid = heat_list[list_index].getDiv().index(div)  # Note will only return
+            # if couple place it
+            if data["type id"] == "C":
+                heat_list[list_index].addEntry(data, roomid)
+                list_index += 1
+                break
+            
+            # If single need to check the instructors
+            if data["type id"] == "L":
+                contestant_col = "Lead Dancer #"
+                inst_col = "Follow Dancer #"
+                inst_fname = "Follow First Name"
+                inst_lname = "Follow Last Name"
+            elif data["type id"] == "F":
+                contestant_col = "Follow Dancer #"
+                inst_col = "Lead Dancer #"
+                inst_fname = "Lead First Name"
+                inst_lname = "Lead Last Name"
+            else:
+                raise Exception("While running backfill() for " + div + " Type id for " + data + " is invalid")
+            # Retrofit the instructor list data
+            if type(data["Instructor Dancer #'s"]) == int:
+                tmp = [data["Instructor Dancer #'s"]]
+            else:
+                tmp = [int(x) for x in data["Instructor Dancer #'s"].split(";")]
+            data["Instructor Dancer #'s"] = tmp
+            del tmp
+
+            for inst in data["Instructor Dancer #'s"]:
+                for each in heat_list[list_index].getInstructors():
+                    if inst in each:
+                        found = True
+                        break
+                for each in heat_list[list_index].getCouples():
+                    if inst in each:
+                        found = True
+                        break
+                for each in heat_list[list_index].Singles():
+                    if inst in each:
+                        found = True
+                        break
+                if not found:
+                    # Set candidate to this single/inst match
+                    candidate = data.to_frame().T
+                    candidate = candidate.reset_index(drop=True)
+                    instructor_data = df_inst[df_inst["Dancer #"] == inst].reset_index(drop=True)
+                    candidate.loc[0, inst_col] = instructor_data.loc[0, "Dancer #"]
+                    candidate.loc[0, inst_fname] = instructor_data.loc[0, "First Name"]
+                    candidate.loc[0, inst_lname] = instructor_data.loc[0, "Last Name"]
+                    heat_list[list_index].addEntry(candidate)
+                    list_index += 1
+                    break
+            if not found:
+                break
