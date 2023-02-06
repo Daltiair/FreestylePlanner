@@ -14,6 +14,7 @@ class Heat:
         self.singles = singles
         self.instructors = instructors
         self.couples = couples
+        self.singles_index = len(self.singles)
 
     def getRoster(self):
         return self.roster
@@ -41,13 +42,13 @@ class Heat:
         # Append to the roster[roomid]
         self.roster[roomid].append(entry)
         #  Check the type and add to respective list
-        if entry["type id"] == "L":
+        if entry.loc[0, "type id"] == "L":
             self.singles[roomid].append(entry.loc[:, "Lead Dancer #"][0])
             self.instructors[roomid].append(entry.loc[:, "Follow Dancer #"][0])
-        elif entry["type id"] == "F":
+        elif entry.loc[0, "type id"] == "F":
             self.singles[roomid].append(entry.loc[:, "Follow Dancer #"][0])
             self.instructors[roomid].append(entry.loc[:, "Lead Dancer #"][0])
-        elif entry["type id"] == "C":
+        elif entry.loc[0, "type id"] == "C":
             self.couples[roomid].append(entry.loc[:, "Lead Dancer #"][0])
             self.couples[roomid].append(entry.loc[:, "Follow Dancer #"][0])
         # Subtract from the holes[roomid]
@@ -144,7 +145,7 @@ class ConflictList:
 
 class ConflictItemSingle:
 
-    def __init__(self, code=0, contestants=[], inst=000, loc='n', type="n"):
+    def __init__(self, code=0, contestants=[], inst=000, loc='n', type="S"):
         # code table
         # 1: No free Instructor assumes contestant free must be at a different level, external only
         # 2: No free contestant, internal only contestant can't be in 2 levels for the same dance.
@@ -163,8 +164,8 @@ class ConflictItemSingle:
     def getType(self):
         return self.type
 
-    def getContestant(self):
-        return self.contestant
+    def getContestants(self):
+        return self.contestants
 
     def getInstructor(self):
         return self.inst
@@ -172,6 +173,8 @@ class ConflictItemSingle:
     def getLocation(self):
         return self.loc
 
+    def updateContestants(self, contestants):
+        self.contestants = contestants
 
 class ConflictLog:
 
@@ -179,19 +182,24 @@ class ConflictLog:
         self.div = div
         self.rooms = len(div)
         self.roomlog = {}
-        self.codeCount = [0,0]  # Code 1 Count, Codde 2 Count
+        self.codeCount = [0, 0]  # Code 1 Count, Codde 2 Count
 
 
         for roomid, info in enumerate(div):
             self.roomlog[roomid] = {}
-            self.roomlog[roomid]["con_list"] = []
-            self.roomlog[roomid]["con_count"] = []
+            self.roomlog[roomid]["conf_list"] = []
+            self.roomlog[roomid]["conf_count"] = []
             self.roomlog[roomid]["div"] = info
             self.roomlog[roomid]["total"] = 0
-            self.roomlog[roomid]["mode_con"] = (0, 0)
-            self.roomlog[roomid]["mode_inst"] = [0,0]
+            self.roomlog[roomid]["mode_con"] = [0, 0]
+            self.roomlog[roomid]["mode_inst"] = [0, 0]
             self.roomlog[roomid]["mode_code"] = 0
             self.roomlog[roomid]["mode_loc"] = 0
+
+
+    def getRoomlog(self):
+        return self.roomlog
+
 
     def addConflict(self, conflict, roomid):
 
@@ -200,23 +208,26 @@ class ConflictLog:
         #  check if the code is the new mode as well
         #  if not there add a new conflict to the list and new number to count list
         dup = False
-        for i, each in enumerate(self.roomlog[roomid]["list"]):
+        for i, each in enumerate(self.roomlog[roomid]["conf_list"]):
             if conflict.getType() == "S":
                 if each.getCode() == conflict.getCode():
                     if each.getInstructor() == conflict.getInstructor():
-                        self.roomlog[roomid]["con_count"][i] += 1
-                        new_num = self.roomlog[roomid]["con_count"][i]
+                        self.roomlog[roomid]["conf_count"][i] += 1
+                        self.roomlog[roomid]["conf_list"][i].updateContestants(conflict.getContestants())
+                        new_num = self.roomlog[roomid]["conf_count"][i]
                         dup = True
             else: # a Couples Conflict
                 if each.getContestant() == conflict.getContestant():
+                    pass
 
         if not dup:
-            self.roomlog[roomid]["list"].append(conflict)
-            self.roomlog[roomid]["con_count"].append(1)
+            self.roomlog[roomid]["conf_list"].append(conflict)
+            self.roomlog[roomid]["conf_count"].append(1)
+            new_num = self.roomlog[roomid]["conf_count"][-1]
 
         self.roomlog[roomid]["total"] += 1
 
-        # Update Inst Mode
+        # Update Mode
         if conflict.getType() == "S":
             # Update code and Mode
             if conflict.getCode() == 1:
@@ -227,9 +238,10 @@ class ConflictLog:
                 self.codeCount[1] += 1
                 if self.codeCount[1] > self.codeCount[0]:
                     self.roomlog[roomid]["mode_code"] = 2
-            # Update Inst
+            # Update Inst mode
             if new_num > self.roomlog[roomid]["mode_inst"][1]:
-                self.roomlog[roomid]["mode_inst"][0] += 1
+                self.roomlog[roomid]["mode_inst"][0] = conflict.getInstructor()
+                self.roomlog[roomid]["mode_inst"][1] += 1
 
 
         # if conflict.getLocation() == 'e':

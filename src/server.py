@@ -27,6 +27,10 @@ def create_sockets():
         port = 8989
         threads = []
 
+        macadddrefile = ""
+        with open(macadddrefile) as f:
+            MAC_ADDRE = f.read().splitlines()
+
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         bind_socket(s, host, port)
         # Create worker threads
@@ -73,7 +77,7 @@ def accept_connections(condition):
             file_name = conn.recv(1024).decode()
             mac_addr = conn.recv(1024).decode()
             if mac_addr not in MAC_ADDRE:
-                # TODO send back MAC address not recognized
+                conn.send("MAC Address not recognized \n Contact admin @ 5402805590")
             # fileSize = conn.recv(1024).decode()
             file_bytes = b''
 
@@ -163,3 +167,12 @@ def listConnections():
 def sortData(conn, addre, dfs):
     pass
 
+def listMACAdd():
+    print("------------Registered MAC Addresses--------------")
+    for each in MAC_ADDRE:
+        print(each+"\n")
+
+def showPreviousConnections():
+    pass
+# TODO print out the file of the last month of connections
+#  connections before the 1st of this month will need to be viewed in the file system
