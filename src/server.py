@@ -78,6 +78,7 @@ def accept_connections(condition):
             mac_addr = conn.recv(1024).decode()
             if mac_addr not in MAC_ADDRE:
                 conn.send("MAC Address not recognized \n Contact admin @ 5402805590")
+                # TODO ask for manual input of MAC address
             # fileSize = conn.recv(1024).decode()
             file_bytes = b''
 
