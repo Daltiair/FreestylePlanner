@@ -179,7 +179,7 @@ class ConflictItemSingle:
 
 class ResolverConflictItemSingle:
     # def __init__(self, code=0, contestants=[], inst=000, loc='n'):
-    def __init__(self, code=0, div=[], heat_index=0, nconflict_room=0, nconflict_index=0, contestants=[], free_inst=[], conflict_num=000, prev_conflict=0):
+    def __init__(self, code=0, div=[], heat_index=0, nconflict_room=0, nconflict_index=0, instructors=[], contestants=[], conflict_num=000, prev_conflict=0, aux=[]):
         # code table
         # 1: Internal heat conflict, conflict entry in question cannot swap instructor for a different one
         # 2: Internal heat conflict, conflict entry in question cannot swap Contestant for a different one
@@ -193,8 +193,9 @@ class ResolverConflictItemSingle:
         self.nconflict_index = nconflict_index
         self.contestants = contestants  # for Nth conflict while trying to solve a no contestant conflict, no solution can cause these numbers to swap into the og heat
         self.conflict_num = conflict_num  # The number that is causing the conflict
-        self.free_inst = free_inst  # The instructor that is free but has not free contesants
+        self.instructors = instructors  # The instructor that is free but has not free contesants
         self.prev_conflict = prev_conflict  # The instructor that is free but has not free contesants
+        self.aux = aux  # The extra instructors/Contestants the fix has to work with
         # Loc table
         # i: internal conflict
         # e: external conflict
@@ -219,11 +220,20 @@ class ResolverConflictItemSingle:
     def getType(self):
         return self.type
 
+    def getPrevConflict(self):
+        return self.prev_conflict
+
+    def getInstructors(self):
+        return self.instructors
+
     def getContestants(self):
         return self.contestants
 
     def getConflictNumber(self):
         return self.conflict_num
+
+    def getAux(self):
+        return self.aux
 
     # def getLocation(self):
     #     return self.loc
@@ -337,6 +347,7 @@ class ResolverConflictLog:
         self.roomlog["conflict_index"] = []  # holds roster index where the conflict is
         self.roomlog["div"] = []
         self.roomlog["prev"] = 0
+        self.roomlog["nminus"] = []
         # self.roomlog["total"] = 0
         # self.roomlog["mode_con"] = [0, 0]
         # self.roomlog["mode_inst"] = [0, 0]
@@ -360,13 +371,14 @@ class ResolverConflictLog:
     def getRoomlog(self):
         return self.roomlog
 
-    def addConflict(self, conflict):
+    def addConflict(self, conflict, con_num):
 
         if conflict.getType() == "S":
             self.roomlog["conf_list"].append(conflict)
             self.roomlog['roomid'].append(conflict.getNConflictRoom())
             self.roomlog['heat_index'].append(conflict.getHeatIndex())
             self.roomlog['div'].append(conflict.getDiv())
+            self.roomlog["nminus"].append(con_num)
         # for i, each in enumerate(self.roomlog["conf_list"]):
         #     if conflict.getType() == "S":
         #         if each.getCode() == conflict.getCode():
@@ -403,26 +415,14 @@ class ResolverConflictLog:
         #         self.roomlog["mode_inst"][0] = conflict.getInstructor()
         #         self.roomlog["mode_inst"][1] += 1
 
-    # TODO probably not needed
-    def clearConflict(self, inst, contestants):
-        # If an instructor is involved in the solution
-        if inst != -1:
-            # Delete conflict from every room involving instructor inst
-            for each in self.roomlog:
-                for i, every in enumerate(self.roomlog[each]["conf_list"]):
-                    if every.getInstructor() == inst:
-                        del every
-                        # Reduce the count by the number of conflicts
-                        if every.getCode() == 1:
-                            self.roomlog[each]["codeCount"][0] -= self.roomlog[each]["conf_count"][i]
-                            # Update mode code
-                            if self.roomlog[each]["codeCount"][0] > self.roomlog[each]["codeCount"][1]:
-                                self.roomlog[each]["mode_code"] = 1
-                        else:
-                            self.roomlog[each]["codeCount"][1] -= self.roomlog[each]["conf_count"][i]
-                            # Update mode code
-                            if self.roomlog[each]["codeCount"][1] > self.roomlog[each]["codeCount"][0]:
-                                self.roomlog[each]["mode_code"] = 1
-                        # Remove from total
-                        self.roomlog[each]["total"] -= self.roomlog[each]["conf_count"][i]
-                        del self.roomlog[each]["conf_count"][i]  # delete the count with it as well
+    def clearConflicts(self):
+        self.roomlog = {}
+        self.codeCount = [0, 0, 0, 0]  # Code 1 Count, Codde 2 Count
+        self.roomlog["conf_list"] = []
+        self.roomlog["conf_count"] = []
+        self.roomlog["roomid"] = []  # holds which room in the heat the conflict is in
+        self.roomlog["heat_index"] = []  # holds heat index where the conflict is (if external conflict)
+        self.roomlog["conflict_index"] = []  # holds roster index where the conflict is
+        self.roomlog["div"] = []
+        self.roomlog["prev"] = 0
+        self.roomlog["nminus"] = []
