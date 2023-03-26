@@ -3,10 +3,42 @@ runs all the methods and outputs an excel sheet with a Freestyle itenerary for a
 
 Written by Dalton Dabney 7/9/22
 '''
+import sys
+
 from methods import *
+from selection import *
 # from gui import *
+import getpass
+import hashlib
+
+
+def startProcess():
+    # try:
+    heats = partitionData()
+    Selection(heats)
+    # except Exception as e:
+    #     print(e)
 
 if __name__ == '__main__':
-    partitionData()
+    startProcess()
+    # hash = hashlib.sha512()
+    # while True:
+    #     if "PlannerBypass" in os.environ:
+    #         partitionData()
+    #     else:
+    #         try:
+    #             pword = getpass.getpass(stream=sys.stderr)
+    #         except Exception as error:
+    #             print("Error", error)
+    #         else:
+    #             filepath = os.getcwd().replace('\src', "") + "/"
+    #             with open(filepath+'password.txt') as f:
+    #                 password = f.readlines()
+    #             hash.update(pword.encode())
+    #             if hash.hexdigest() == password[0]:
+    #                 partitionData()
+    #             else:
+    #                 print("Wrong Password")
     # ran = False
     # freestylePlannerGuiApp().run()
+

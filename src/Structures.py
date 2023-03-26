@@ -5,12 +5,13 @@ File with all objects and structures used to create Free Style Itenerary
 class Heat:
 
     # def __init__(self, key='', div=[], roster=[], holes=[], singles=[], instructors=[], couples=[]):
-    def __init__(self, key='', div=[], roster=[], singles=[], instructors=[], couples=[]):
+    def __init__(self, key='', div=[], roster=[], holes=[], singles=[], instructors=[], couples=[]):
         # key = Genre-Syllabus-Dance-index
         self.key = key
         self.div = div
         # self.holes = holes
         self.roster = roster
+        self.holes = holes
         self.singles = singles
         self.instructors = instructors
         self.couples = couples
@@ -21,14 +22,15 @@ class Heat:
 
     def getDiv(self):
         return self.div
+
     def setDiv(self, newdivs):
         self.div = newdivs
+
     def getInstructors(self):
         return self.instructors
 
     def getHoles(self):
-        pass
-        # return self.holes
+        return self.holes
 
     def getKey(self):
         return self.key
@@ -57,16 +59,22 @@ class Heat:
 
     def replaceContestant(self, roomid, roster_index, replacement_couple):
         tmp = self.roster[roomid][roster_index]
+        print("removing", tmp['Lead Dancer #'][0], tmp["Follow Dancer #"][0])
+        print("adding", replacement_couple['Lead Dancer #'][0], replacement_couple["Follow Dancer #"][0])
         if tmp.loc[0, "type id"] == "L":
+            print(self.singles[roomid], self.instructors[roomid])
             self.singles[roomid].insert(roster_index, replacement_couple.loc[:, "Lead Dancer #"][0])
             self.instructors[roomid].insert(roster_index, replacement_couple.loc[:, "Follow Dancer #"][0])
             self.singles[roomid].remove(tmp.loc[:, "Lead Dancer #"][0])
             self.instructors[roomid].remove(tmp.loc[:, "Follow Dancer #"][0])
+            print(self.singles[roomid], self.instructors[roomid])
         elif tmp.loc[0, "type id"] == "F":
+            print(self.instructors[roomid], self.singles[roomid])
             self.singles[roomid].insert(roster_index, replacement_couple.loc[:, "Follow Dancer #"][0])
             self.instructors[roomid].insert(roster_index, replacement_couple.loc[:, "Lead Dancer #"][0])
             self.singles[roomid].remove(tmp.loc[:, "Follow Dancer #"][0])
             self.instructors[roomid].remove(tmp.loc[:, "Lead Dancer #"][0])
+            print(self.instructors[roomid], self.singles[roomid])
         elif tmp.loc[0, "type id"] == "C":
             self.couples[roomid].insert(roster_index*2, replacement_couple.loc[:, "Follow Dancer #"][0])
             self.couples[roomid].insert(roster_index*2, replacement_couple.loc[:, "Lead Dancer #"][0])
@@ -79,7 +87,9 @@ class Heat:
 
     def stealEntry(self, roomid, roster_index):
         tmp = self.roster[roomid][roster_index]
+        print(tmp['Lead Dancer #'][0], tmp["Follow Dancer #"][0])
         del self.roster[roomid][roster_index]
+        self.holes[roomid] += 1
         if tmp.loc[0, "type id"] == "L":
             self.singles[roomid].remove(tmp.loc[:, "Lead Dancer #"][0])
             self.instructors[roomid].remove(tmp.loc[:, "Follow Dancer #"][0])
@@ -91,7 +101,12 @@ class Heat:
             self.couples[roomid].remove(tmp.loc[:, "Lead Dancer #"][0])
         return tmp
 
-
+    def calculateHoles(self, couples_per_floor):
+        # add the holes into heat obj
+        for i, room in enumerate(self.roster):
+            self.holes[i] = couples_per_floor - len(room)
+            if couples_per_floor - len(room) != 0:
+                pass
 
 class HeatList:
     def __init__(self, rosters=[], floors=1, couples_p_floor=0, eventages_s=[], eventages_c=[], eventlvlnames_s=[], eventlvlnames_c=[]):
@@ -106,6 +121,7 @@ class HeatList:
         self.eventlvlnames_c = eventlvlnames_c
         # self.level_bp = level_bp
         self.heat_count = 0
+        self.hole_count = []
 
     def getRostersList(self):
         return self.rosters
@@ -120,6 +136,14 @@ class HeatList:
             return 0
 
         return self.divcounts[index]
+
+    def getDivisionHoleCount(self, div):
+        try:
+            index = self.divs.index(div)
+        except:
+            return 0
+
+        return self.hole_count[index]
 
     def getHeatCount(self):
         return self.heat_count
@@ -143,15 +167,16 @@ class HeatList:
         self.rosters.append(heat)
         self.heat_count += 1
         # Check the divs, if new add it, if exists increment the count of heats
-        for each in heat.getDiv():
+        for i, each in enumerate(heat.getDiv()):
             try:
                 index = self.divs.index(each)
             except:
                 self.divs.append(each)
                 self.divcounts.append(1)
+                self.hole_count.append(heat.getHoles()[i])
                 continue
             self.divcounts[index] += 1
-
+            self.hole_count[index] += heat.getHoles()[i]
 
 class ConflictItemSingle:
     # def __init__(self, code=0, contestants=[], inst=000, loc='n'):
@@ -268,6 +293,7 @@ class ConflictLog:
             # self.roomlog[roomid]["mode_con"] = [0, 0]
             self.roomlog[roomid]["mode_inst"] = [0, 0]
             self.roomlog[roomid]["mode_cont"] = [0, 0]
+            self.roomlog[roomid]["inst_list"] = []
             # self.roomlog[roomid]["mode_code"] = 0
             # # self.roomlog[roomid]["mode_loc"] = 0
             # self.roomlog[roomid]["codeCount"] = [0, 0]  # Code 1 Count, Codde 2 Count
@@ -279,8 +305,14 @@ class ConflictLog:
     def getDivision(self):
         return self.div
 
+    def getInstructorsList(self, roomid):
+        return self.roomlog[roomid]["inst_list"]
+
     def addConflict(self, conflict, roomid):
         dup = False
+        # if instructor is not in the list
+        if conflict.getInstructor() not in self.roomlog[roomid]["inst_list"]:
+            self.roomlog[roomid]["inst_list"].append(conflict.getInstructor())
         for i, each in enumerate(self.roomlog[roomid]["conf_list"]):
             if conflict.getType() == "S":
                 if each.getCode() == conflict.getCode():
@@ -329,6 +361,8 @@ class ConflictLog:
                         self.roomlog[each]["total"] -= self.roomlog[each]["conf_count"][index]
                         del self.roomlog[each]["conf_count"][index]  # delete the count with it as well
                         del self.roomlog[each]["conf_list"][index]
+                        if inst in self.roomlog[each]["inst_list"]:
+                            self.roomlog[each]["inst_list"].remove(inst)
                         if self.roomlog[each]["mode_inst"][0] == inst:
                             self.roomlog[each]["mode_inst"][0] = 0
                             self.roomlog[each]["mode_inst"][1] = 0
