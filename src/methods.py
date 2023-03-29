@@ -5,6 +5,7 @@ import os
 import random
 import init
 import socket
+import socket
 from conflict import resolveConflictSingles, resolveConflictCouples, resetSolutionLogic
 from init import updateDanceDfs, getNode, buildInstTree, instructorOperation
 from Structures import Heat, HeatList, ConflictLog, ConflictItemSingle, ConflictItemCouple
@@ -976,14 +977,15 @@ def PoachPrevHeatsSingles(roomid, div, dance_df, heat, heatlist, acceptablecoupl
                     tmp = heat2poach.stealEntry(poach[1], poach[2])
                     heat.addEntry(tmp, roomid)
                     heatlen += 1
-                elif counter >= 1 and len(heat2poach.getRoster()[poach[1]]) >= acceptablecouples:
+                    singles_list.append(heat.getSingles()[roomid][-1])
+                    instructors_list.append(heat.getInstructors()[roomid][-1])
+                elif counter >= 1 and len(heat2poach.getRoster()[poach[1]]) > acceptablecouples:
                     print("Contestant", heat2poach.getSingles()[poach[1]][poach[2]], 'Instructor', heat2poach.getInstructors()[poach[1]][poach[2]], "stolen from heat, room", poach[0], poach[1])
                     tmp = heat2poach.stealEntry(poach[1], poach[2])
                     heat.addEntry(tmp, roomid)
                     heatlen += 1
-                # Add new entry to the check list to stop multiple person problem
-                singles_list.append(heat.getSingles()[roomid][-1])
-                instructors_list.append(heat.getInstructors()[roomid][-1])
+                    singles_list.append(heat.getSingles()[roomid][-1])
+                    instructors_list.append(heat.getInstructors()[roomid][-1])
             counter += 1
         poachlist.clear()
         runcounter += 1
@@ -1202,7 +1204,7 @@ def backfill(dance_df, div, heat_list, couples_per_floor, ev):
                         candidate.loc[0, inst_col] = instructor_data.loc[0, "Dancer #"]
                         candidate.loc[0, inst_fname] = instructor_data.loc[0, "First Name"]
                         candidate.loc[0, inst_lname] = instructor_data.loc[0, "Last Name"]
-                    print("Candidate", candidate.loc[0,contestant_col], "Backfilled to", list_index, div,)
+                    print("Candidate", candidate.loc[0, contestant_col], "Backfilled to", list_index, div,)
                     heats[list_index].addEntry(candidate, roomid)
                     # Remove the placed candidate from the df, or -1 if multi-entry
                     dance_df.loc[dance_df.loc[:, contestant_col] == candidate.loc[0, contestant_col], ev] = candidate.loc[0, ev] - 1

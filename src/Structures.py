@@ -59,22 +59,22 @@ class Heat:
 
     def replaceContestant(self, roomid, roster_index, replacement_couple):
         tmp = self.roster[roomid][roster_index]
-        print("removing", tmp['Lead Dancer #'][0], tmp["Follow Dancer #"][0])
+        print("removing", tmp['Lead Dancer #'][0], tmp["Follow Dancer #"][0], "Room", roomid, "Index", roster_index)
         print("adding", replacement_couple['Lead Dancer #'][0], replacement_couple["Follow Dancer #"][0])
         if tmp.loc[0, "type id"] == "L":
-            print(self.singles[roomid], self.instructors[roomid])
+            # print(self.singles[roomid], self.instructors[roomid])
             self.singles[roomid].insert(roster_index, replacement_couple.loc[:, "Lead Dancer #"][0])
             self.instructors[roomid].insert(roster_index, replacement_couple.loc[:, "Follow Dancer #"][0])
             self.singles[roomid].remove(tmp.loc[:, "Lead Dancer #"][0])
             self.instructors[roomid].remove(tmp.loc[:, "Follow Dancer #"][0])
-            print(self.singles[roomid], self.instructors[roomid])
+            # print(self.singles[roomid], self.instructors[roomid])
         elif tmp.loc[0, "type id"] == "F":
-            print(self.instructors[roomid], self.singles[roomid])
+            # print(self.instructors[roomid], self.singles[roomid])
             self.singles[roomid].insert(roster_index, replacement_couple.loc[:, "Follow Dancer #"][0])
             self.instructors[roomid].insert(roster_index, replacement_couple.loc[:, "Lead Dancer #"][0])
             self.singles[roomid].remove(tmp.loc[:, "Follow Dancer #"][0])
             self.instructors[roomid].remove(tmp.loc[:, "Lead Dancer #"][0])
-            print(self.instructors[roomid], self.singles[roomid])
+            # print(self.instructors[roomid], self.singles[roomid])
         elif tmp.loc[0, "type id"] == "C":
             self.couples[roomid].insert(roster_index*2, replacement_couple.loc[:, "Follow Dancer #"][0])
             self.couples[roomid].insert(roster_index*2, replacement_couple.loc[:, "Lead Dancer #"][0])
@@ -107,6 +107,17 @@ class Heat:
             self.holes[i] = couples_per_floor - len(room)
             if couples_per_floor - len(room) != 0:
                 pass
+
+    def printHeat(self):
+        for i, each in enumerate(self.singles):
+            print("Room " + str(i) + " singles")
+            print(each, self.div[i])
+            # print("instructors")
+            print(self.instructors[i], self.div[i])
+        # for i, each in enumerate(self.instructors):
+        #     print("Room" + str(i) + "instructors")
+        #     print(each)
+
 
 class HeatList:
     def __init__(self, rosters=[], floors=1, couples_p_floor=0, eventages_s=[], eventages_c=[], eventlvlnames_s=[], eventlvlnames_c=[]):
@@ -383,7 +394,9 @@ class ConflictLog:
 
     def addRoom(self, newdiv):
         roomid = self.rooms
+        print(roomid)
         self.rooms = len(self.div)
+        print(self.rooms)
         self.roomlog[roomid] = {}
         self.roomlog[roomid]["conf_list"] = []
         self.roomlog[roomid]["conf_count"] = []

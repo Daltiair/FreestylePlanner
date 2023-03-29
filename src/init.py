@@ -18,18 +18,22 @@ test_dict = {}
 age_bnames = ["A", "A1", "B", "B1", "C", "C1", "D"]
 lvls = ["AB", "FB", "AS", "FS", 'AG', "FG"]
 lvl_conversion = [0, 1, 2, 3, 4, 5]
+eventlvlnames_s = []
+eventlvlnames_c = []
 ev = "None"
 
 # Conflict variables
 # solved = 0  # counts how many resolveConflict() calls for this pair search
 # nsolved = 0  # counts how many resolveNConflict() calls for this pair search
 # solutioncount = 0  # holds which solution in the chain I am on
-max_conflicts = 2000
+max_conflicts = 1000
 maxsolves = 3
 maxorder = 3
+maxsolutions = [7, 5, 5]  # Termination clauses for solving conflicts n times
 solved = [0] * maxorder
 presolved = [0] * maxorder
 solution = [0] * (maxorder+1)
+starting_instructors_for_heat = []
 
 # Participant sheets
 participantsheetcols = {"Day": [], "Heat #": [], "Floor": [], "Partner #": [], "Partner Name": [], "Event": [], "Syllabus":[], "Division": []}
@@ -68,15 +72,15 @@ def deleteEmpty(dance_dfs):
     return dance_dfs
 
 
-def updateDanceDfs(dance_dfs, df_for_heat, floor_info):
+def updateDanceDfs(dance_dfs, df_for_heat, floor_info, full_key):
     try:
         if type(dance_dfs[floor_info[0]]) is dict:
-            updateDanceDfs(dance_dfs[floor_info[0]], df_for_heat, floor_info[1:])
+            updateDanceDfs(dance_dfs[floor_info[0]], df_for_heat, floor_info[1:], full_key)
         else:
             dance_dfs[floor_info[0]] = df_for_heat
         return dance_dfs
     except:
-        print("Df pool is already deleted for", floor_info)
+        print("Df pool is already deleted for", full_key)
 
 
 def buildInstTree(dance_dfs, inst_tree, ev):
@@ -238,6 +242,7 @@ def checkheat(heat):
                     counter += 1
                 if each.count(inst) > 1:
                     raise Exception(" Multiple persons in this heat", inst, heat.getKey())
+
             if counter > 1:
                 raise Exception("Multiple Persons in this heat", inst, heat.getKey())
 
