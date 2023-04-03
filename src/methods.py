@@ -2,13 +2,9 @@ import math
 
 import pandas as pd
 import os
-import random
 import init
 import socket
-import socket
-from conflict import resolveConflictSingles, resolveConflictCouples, resetSolutionLogic
 from init import updateDanceDfs, getNode, buildInstTree, instructorOperation
-from Structures import Heat, HeatList, ConflictLog, ConflictItemSingle, ConflictItemCouple
 from uuid import getnode as gma
 from output import buildEvent, makeHeatDict, buildEventfast
 
@@ -224,6 +220,14 @@ def partitionData():
     init.df_coup["Lead Age"] = init.df_coup['Lead Age'].astype(int)
     init.df_coup["Follow Age"] = init.df_coup['Follow Age'].astype(int)
     init.df_coup["type id"] = "C"
+
+    # Make event columns as int
+    for each in dancelist:
+        if each in init.df_coup.columns:
+            init.df_coup[each] = init.df_coup[each].astype(int)
+
+        if each in init.df_sing.columns:
+            init.df_sing[each] = init.df_sing[each].astype(int)
 
     init.df_inst = pd.read_excel(file, sheet_name='Instructors')
     init.df_inst["Dancer #"] = init.df_inst['Dancer #'].astype(int)
@@ -609,11 +613,8 @@ def pickDfs(ev, dance_dfs, inst_tree, floors, div, eventages_s, eventages_c, cou
                     elif every not in picked_keys:  # add to picked list only if that key combo is not in already
                         # if added is a single
                         if every[0] == "S":
-                            cop = []
-                            for key in picked_keys:
-                                cop.append(key[:])
                             # Sanity check the levels in question
-                            unique = findUnique(inst_tree, cop, every)
+                            unique = findUnique(inst_tree, copyList(picked_keys), every)
                             count = findInstCount(inst_tree, every)
                             # find # of 'singles' rooms
                             sfloors = 0
@@ -830,6 +831,14 @@ def findUnique(inst_tree, picked_keys, newkey):
     return len(set(instructors))
 
 
+def copyList(copy):
+
+    cop = []
+    for key in copy:
+        cop.append(key[:])
+    return cop
+
+
 def findInstCount(inst_tree, newkey):
     for i, each in enumerate(newkey):
         if i == 0:
@@ -921,36 +930,6 @@ def PoachPrevHeatsSingles(roomid, div, dance_df, heat, heatlist, acceptablecoupl
                         potentials += 1
                 dup = False
                 index_iter += 1
-        # Determine if it is better to backfill
-        # if (len(poachlist) + len(heat.getSingles()[roomid])) < acceptablecouples or heatlist.getDivisionHoleCount(div) >= heatlen:
-        #     print("Poach will not reach acceptable roster size")
-            # backfill_df = pd.DataFrame()
-            # for i, contestant in enumerate(reversed(heat.getSingles()[roomid])):
-            #     index = len(heat.getSingles()[roomid]) - 1
-            #     tmp = heat.stealEntry(roomid, index)
-            #     backfill_df = pd.concat([backfill_df, tmp])
-            #     # if singles["type id"] == "L":
-            #     #     contestant_col = "Lead Dancer #"
-            #     #     inst_col = "Follow Dancer #"
-            #     #     inst_fname = "Follow First Name"
-            #     #     inst_lname = "Follow Last Name"
-            #     # elif singles["type id"] == "F":
-            #     #     contestant_col = "Follow Dancer #"
-            #     #     inst_col = "Lead Dancer #"
-            #     #     inst_fname = "Lead First Name"
-            #     #     inst_lname = "Lead Last Name"
-            #     # else:
-            #     #     raise Exception("Type id for " + singles + " is invalid")
-            #     # if dance_df[dance_df[contestant_col] == contestant].shape[0] > 0:
-            #     #     dance_df.loc[dance_df.loc[:, contestant_col] == tmp.loc[0, contestant_col], init.ev] = dance_df.loc[dance_df.loc[:, contestant_col] == tmp.loc[0, contestant_col], init.ev] + 1
-            #     # dance_df = pd.concat([dance_df, tmp])
-            # print("Backfilling", div)
-            # result = backfill(backfill_df, div, heatlist, couples_per_floor, init.ev)
-            # if result == -1:  # If backfill failed put entries back into the room
-            #     for row, data in backfill_df.iterrows():
-            #         data = data.to_frame().T
-            #         heat.addEntry(data, roomid)
-            # return
         instructors_list = []
         for i, each in enumerate(heat.getInstructors()):
             for every in each:
@@ -1215,25 +1194,363 @@ def backfill(dance_df, div, heat_list, couples_per_floor, ev):
         backfill_df = backfill_df[backfill_df.loc[:, ev] != 0]
 
     dance_df = backfill_df
+
+    if not backfill_df[backfill_df.loc[:, ev] < 0].empty:
+        pass
     return
 
-        # if len(backfill_list) < dance_df[init.ev].sum():
-        #     print("Backfill not possible recommend changing Division settings for", div, "in", init.ev)
-        #     return -1
-        # else:
-        #     for each in backfill_list:
-        #         # Set candidate to this single/inst match
-        #         candidate = each[0]
-        #         candidate = candidate.reset_index(drop=True)
-        #         data = data.to_frame().T
-        #         if data["type id"] != "C":
-        #             instructor_data = init.df_inst[init.df_inst["Dancer #"] == each[1]].reset_index(drop=True)
-        #             candidate.loc[0, inst_col] = instructor_data.loc[0, "Dancer #"]
-        #             candidate.loc[0, inst_fname] = instructor_data.loc[0, "First Name"]
-        #             candidate.loc[0, inst_lname] = instructor_data.loc[0, "Last Name"]
-        #         heats[each[1]].addEntry(candidate, each[2])
-        #         # Remove the placed candidate from the df, or -1 if multi-entry
-        #         dance_df.loc[dance_df.loc[:, contestant_col] == candidate.loc[0, contestant_col], ev] = candidate.loc[0, ev] - 1
+
+def setupSinglesEvent(eventrow, contestant_data):
+    div = eventrow.loc[:, 'Event Divisions'][0]
+
+    # Use Combine Age Brackets field to set up dance dfs tree
+    combineage_s = eventrow.loc[:, 'Combine Age Brackets'][0]
+    if type(combineage_s) == float:  # if blank
+        init.eventages_s = init.age_brackets.copy()
+    else:
+        combineage = eventrow.loc[:, 'Combine Age Brackets'][0].split(";")
+        eventage = []
+        for age in init.age_brackets:
+            eventage.append([age])
+        for combo in combineage:
+            first = int(combo[0])
+            last = int(combo[2])
+            if first > last:  # Swap them if entered incorrectly
+                first = last
+                last = first
+            if first > len(init.age_brackets) or last > len(init.age_brackets):
+                raise Exception("Combine Age Brackets for", init.ev, "has a number outside", "1-" + str(len(init.age_brackets)))
+            for j in range(last - first):
+                eventage[first + j - 1].clear()
+        for entry in eventage:
+            if entry != []:
+                init.eventages_s.append(entry[0])
+
+    # Use Combine Levels field to set up dance dfs tree for Singles
+    eventlvls_s = []
+    combinelvls_s = eventrow.loc[:, 'Combine Levels'][0]
+    if type(combinelvls_s) == float:  # if blank
+        init.eventlvlnames_s = init.lvls.copy()
+    else:
+        combinelvl = eventrow.loc[:, 'Combine Levels'][0].split(";")
+        lvlnames_s = []
+        lvlcombos_s = []
+        firsts = []
+        lasts = []
+        for lvl in init.lvls:
+            lvlnames_s.append([lvl])
+        for dfs in contestant_data["Single"]:
+            lvlcombos_s.append([dfs])
+        for combo in combinelvl:
+            concat_data_s = []
+            first = combo[0:2]
+            firsts.append(first)
+            first = init.lvl_conversion[init.lvls.index(first)]
+            last = combo[3:]
+            lasts.append(last)
+            last = init.lvl_conversion[init.lvls.index(last)]
+            if first > last:  # Swap them if entered incorrectly
+                first = last
+                firsts[-1] = lasts[-1]
+                last = first
+                lasts[-1] = firsts[-1]
+            if last - 1 >= len(init.lvls) or first < 0:
+                raise Exception("Combine Levels for", init.ev, "has a number outside 1-6")
+            for j in range(last - first):
+                lvlnames_s[first + j].clear()
+                concat_data_s.append(contestant_data['Single'][first + j])
+                lvlcombos_s[first + j].clear()
+            concat_data_s.append(contestant_data['Single'][last])
+            lvlcombos_s[last] = [pd.concat(concat_data_s)]
+        for i, entry in enumerate(lvlnames_s):
+            if entry != []:
+                if entry[0] in lasts:
+                    tmp = entry[0]
+                    entry[0] = firsts[lasts.index(entry[0])] + "-" + entry[0]
+                    del firsts[lasts.index(tmp)]
+                init.eventlvlnames_s.append(entry[0])
+        for i, entry in enumerate(lvlcombos_s):
+            if entry != []:
+                eventlvls_s.append(entry[0])
+        contestant_data["Single"] = eventlvls_s
+
+    shell_s = {"Lead": {}, "Follow": {}}
+    for Single, lvl in zip(contestant_data['Single'], init.eventlvlnames_s):
+        Single = Single[Single[init.ev] > 0]
+        # Need this to get around Lead/Follow key being deleted when combining tree branches
+        # if (div.count('S') == 0 and div.count('s') == 0) or (div.count('T') == 0 and div.count('t') == 0):
+        #     init.dance_dfs["S"]["Lead"] = {}
+        #     init.dance_dfs["S"]["Follow"] = {}
+        #     shell_s["Lead"] = {}
+        #     shell_s["Follow"] = {}
+        init.dance_dfs["S"]["Lead"][lvl] = {}
+        init.dance_dfs["S"]["Follow"][lvl] = {}
+        shell_s["Lead"][lvl] = {}
+        shell_s["Follow"][lvl] = {}
+        if not Single.empty:
+            if not Single[Single['Lead/Follow'] == 'Lead'].empty:
+                df = Single[(Single['Lead/Follow'] == 'Lead') | (Single['Lead/Follow'] == 'L')]
+                df.loc[:, 'type id'] = 'L'
+                df = df.rename(columns={'First Name': 'Lead First Name', 'Last Name': 'Lead Last Name',
+                                        'Dancer #': 'Lead Dancer #', "Age": "Lead Age"})
+                df['Follow First Name'] = ''
+                df['Follow Last Name'] = ''
+                df['Follow Age'] = ''
+                df['Follow Dancer #'] = ''
+                df = df[['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name', "Lead Age", "Follow Age",
+                         "Instructor Dancer #'s",
+                         'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Level', 'School', init.ev]]
+                for i, age in enumerate(init.eventages_s):
+                    # SLice so that it is inside age bracket
+                    if i == 0:  # Set bounds of age bracket
+                        lower = 18
+                        upper = age
+                    else:
+                        lower = init.eventages_s[i - 1] + 1
+                        upper = age
+                    # Split the df based on which age is lower and then add them together at the end
+                    sliced_l = df[(lower <= df["Lead Age"]) & (df["Lead Age"] <= upper)]
+                    shell_s["Lead"][lvl][age] = sliced_l
+            else:
+                for i, age in enumerate(init.eventages_s):
+                    init.dance_dfs["S"]["Lead"][lvl][age] = pd.DataFrame()
+                    shell_s["Lead"][lvl][age] = pd.DataFrame()
+                    # shell_i["Lead"][lvl][age] = pd.DataFrame()
+
+            if not Single[Single['Lead/Follow'] == 'Follow'].empty:
+
+                df2 = Single[Single['Lead/Follow'] == 'Follow']
+                df2.loc[:, 'type id'] = 'F'
+                df2 = df2.rename(columns={'First Name': 'Follow First Name', 'Last Name': 'Follow Last Name',
+                                          'Dancer #': 'Follow Dancer #', "Age": "Follow Age"})
+                df2['Lead First Name'] = ''
+                df2['Lead Last Name'] = ''
+                df2['Lead Age'] = ''
+                df2['Lead Dancer #'] = ''
+                df2 = df2[['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name', "Lead Age",
+                           "Instructor Dancer #'s",
+                           'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Follow Age', 'Level', 'School',
+                           init.ev]]
+                for i, age in enumerate(init.eventages_s):
+                    # SLice Couple so that it is inside age bracket
+                    if i == 0:  # Set bounds of age bracket
+                        lower = 18
+                        upper = age
+                    else:
+                        lower = init.eventages_s[i - 1] + 1
+                        upper = age
+                    # Split the df based on which age is lower and then add them together at the end
+                    sliced_f = df2[(lower <= df2["Follow Age"]) & (df2["Follow Age"] <= upper)]
+                    shell_s["Follow"][lvl][age] = sliced_f
+            else:
+                for i, age in enumerate(init.eventages_s):
+                    init.dance_dfs["S"]["Follow"][lvl][age] = pd.DataFrame()
+                    shell_s["Follow"][lvl][age] = pd.DataFrame()
+        else:
+            for i, age in enumerate(init.eventages_s):
+                init.dance_dfs["S"]["Lead"][lvl][age] = pd.DataFrame()
+                init.dance_dfs["S"]["Follow"][lvl][age] = pd.DataFrame()
+                shell_s["Follow"][lvl][age] = pd.DataFrame()
+                shell_s["Lead"][lvl][age] = pd.DataFrame()
+
+        # Add together dfs based on the division metrics of this event
+        if div.count('A') == 0 and div.count('a') == 0:
+            # Lead concat
+            for i, key in enumerate(shell_s["Lead"][lvl].keys()):
+                if i == 0:
+                    tmp = shell_s["Lead"][lvl][key]
+                    continue
+                tmp = pd.concat([tmp, shell_s["Lead"][lvl][key]])
+            shell_s["Lead"][lvl] = tmp
+
+            # Follow Concat
+            for i, key in enumerate(shell_s["Follow"][lvl].keys()):
+                if i == 0:
+                    tmp = shell_s["Follow"][lvl][key]
+                    continue
+                tmp = pd.concat([tmp, shell_s["Follow"][lvl][key]])
+            shell_s["Follow"][lvl] = tmp
+
+    # Combine all levels if needed
+    if div.count('L') == 0 and div.count('l') == 0:
+        # Lead Concat
+        for i, lvl in enumerate(shell_s["Lead"].keys()):
+            if i == 0:
+                tmp = shell_s["Lead"][lvl]
+                continue
+            if type(tmp) is dict:
+                for subkey in tmp.keys():
+                    tmp[subkey] = pd.concat([tmp[subkey], shell_s["Lead"][lvl][subkey]])
+            else:
+                tmp = pd.concat([tmp, shell_s["Lead"][lvl]])
+        shell_s["Lead"] = tmp
+
+        # Follow Concat
+        for i, lvl in enumerate(shell_s["Follow"].keys()):
+            if i == 0:
+                tmp = shell_s["Follow"][lvl]
+                continue
+            if type(tmp) is dict:
+                for subkey in tmp.keys():
+                    tmp[subkey] = pd.concat([tmp[subkey], shell_s["Follow"][lvl][subkey]])
+            else:
+                tmp = pd.concat([tmp, shell_s["Follow"][lvl]])
+        shell_s["Follow"] = tmp
+
+    # if event Singles should be combined
+    if (div.count('S') == 0 and div.count('s') == 0) or (div.count('T') == 0 and div.count('t') == 0):
+        # Singles Lead/Follow Concat
+        for i, key in enumerate(shell_s.keys()):
+            if i == 0:
+                tmp = shell_s[key]
+                continue
+            if type(tmp) is dict:  # Go down the tree and combine the corresponding N nodes
+                for subkey in tmp.keys():
+                    if type(tmp[subkey]) is dict:
+                        for subkey2 in tmp[subkey].keys():
+                            tmp[subkey][subkey2] = pd.concat(
+                                [tmp[subkey][subkey2], shell_s[key][subkey][subkey2]])
+                    else:
+                        tmp[subkey] = pd.concat([tmp[subkey], shell_s[key][subkey]])
+            else:
+                tmp = pd.concat([tmp, shell_s[key]])
+            shell_s = tmp
+    init.dance_dfs["S"] = shell_s
+
+
+def setupCouplesEvent(eventrow, contestant_data):
+    div = eventrow.loc[:, 'Event Divisions'][0]
+    
+    # Use Combine Age Brackets field to set up dance dfs tree
+    combineage_c = eventrow.loc[:, 'Combine Age Brackets'][0]
+    if type(combineage_c) == float:  # if blank
+        init.eventages_c = init.age_brackets.copy()
+    else:
+        combineage = eventrow.loc[:, 'Combine Age Brackets'][0].split(";")
+        eventage = []
+        for age in init.age_brackets:
+            eventage.append([age])
+        for combo in combineage:
+            first = int(combo[0])
+            last = int(combo[2])
+            if first > last:  # Swap them if entered incorrectly
+                first = last
+                last = first
+            if first > len(init.age_brackets) or last > len(init.age_brackets):
+                raise Exception("Combine Age Brackets for", init.ev, "has a number outside",
+                                "1-" + str(len(init.age_brackets)))
+            for j in range(last - first):
+                eventage[first + j - 1].clear()
+        for entry in eventage:
+            if entry != []:
+                init.eventages_c.append(entry[0])
+
+    # Use Combine Levels field to set up dance dfs tree for Couples
+    eventlvls_c = []
+    combinelvls_c = eventrow.loc[:, 'Combine Levels'][0]
+    if type(combinelvls_c) == float:  # if blank
+        init.eventlvlnames_c = init.lvls.copy()
+    else:
+        combinelvl = eventrow.loc[:, 'Combine Levels'][0].split(";")
+        lvlnames_c = []
+        lvlcombos_c = []
+        firsts = []
+        lasts = []
+        for lvl in init.lvls:
+            lvlnames_c.append([lvl])
+        for dfs in contestant_data["Couple"]:
+            lvlcombos_c.append([dfs])
+        for combo in combinelvl:
+            concat_data_c = []
+            first = combo[0:2]
+            firsts.append(first)
+            first = init.lvl_conversion[init.lvls.index(first)]
+            last = combo[3:]
+            lasts.append(last)
+            last = init.lvl_conversion[init.lvls.index(last)]
+            if first > last:  # Swap them if entered incorrectly
+                first = last
+                firsts[-1] = lasts[-1]
+                last = first
+                lasts[-1] = firsts[-1]
+            if last - 1 >= len(init.lvls) or first < 0:
+                raise Exception("Combine Levels for", init.ev, "has a number outside 1-6")
+            for j in range(last - first):
+                lvlnames_c[first + j].clear()
+                concat_data_c.append(contestant_data['Couple'][first + j])
+                lvlcombos_c[first + j].clear()
+            print(last)
+            concat_data_c.append(contestant_data['Couple'][last])
+            lvlcombos_c[last] = [pd.concat(concat_data_c)]
+        for i, entry in enumerate(lvlnames_c):
+            if entry != []:
+                if entry[0] in lasts:
+                    tmp = entry[0]
+                    entry[0] = firsts[lasts.index(entry[0])] + "-" + entry[0]
+                    del firsts[lasts.index(tmp)]
+                init.eventlvlnames_c.append(entry[0])
+        for i, entry in enumerate(lvlcombos_c):
+            if entry != []:
+                eventlvls_c.append(entry[0])
+        contestant_data["Couple"] = eventlvls_c
+    shell_c = {}
+
+    for Couple, lvl in zip(contestant_data['Couple'], init.eventlvlnames_c):
+        Couple = Couple[Couple[init.ev] > 0]
+        init.dance_dfs["C"][lvl] = {}
+        shell_c[lvl] = {}
+        if not Couple.empty:  # Couple df operations
+            Couple['type id'] = 'C'
+            Couple = Couple[['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name', 'Lead Age',
+                             'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Follow Age',
+                             'Level', 'School', init.ev]]
+            if div.count('t') == 0 or div.count("T") == 0:
+                Couple["Instructor Dancer #'s"] = ''
+            for i, age in enumerate(init.eventages_c):
+                # Slice Couple so that it is inside age bracket
+                if i == 0:  # Set bounds of age bracket
+                    lower = 18
+                    upper = age
+                else:
+                    lower = init.eventages_c[i - 1] + 1
+                    upper = age
+                # Split the df based on which age is lower and then add them together at the end
+                sliced_f = Couple[Couple["Lead Age"] >= Couple["Follow Age"]]
+                sliced_f = sliced_f[(lower <= sliced_f["Follow Age"]) & (sliced_f["Follow Age"] <= upper)]
+                sliced_l = Couple[Couple["Lead Age"] < Couple["Follow Age"]]
+                sliced_l = sliced_l[(lower <= sliced_l["Lead Age"]) & (sliced_l["Lead Age"] <= upper)]
+                shell_c[lvl][age] = pd.concat([sliced_l, sliced_f])
+        else:
+            for i, age in enumerate(init.eventages_c):
+                init.dance_dfs["C"][lvl][age] = pd.DataFrame()
+                shell_c[lvl][age] = pd.DataFrame()
+
+    # Add together dfs based on the division metrics of this event
+    if div.count('A') == 0 and div.count('a') == 0:
+        # Couple Concat
+        for lvl in shell_c.keys():
+            for i, key in enumerate(shell_c[lvl].keys()):
+                if i == 0:
+                    tmp = shell_c[lvl][key]
+                    continue
+                tmp = pd.concat([tmp, shell_c[lvl][key]])
+            shell_c[lvl] = tmp
+
+    # Combine all levels if needed
+    if div.count('L') == 0 and div.count('l') == 0:
+        for i, key in enumerate(shell_c.keys()):
+            if i == 0:
+                tmp = shell_c[key]
+                continue
+            if type(tmp) is dict:
+                for subkey in tmp.keys():
+                    tmp[subkey] = pd.concat([tmp[subkey], shell_c[key][subkey]])
+            else:
+                tmp = pd.concat([tmp, shell_c[key]])
+        shell_c = tmp
+
+    # put shell into df
+    init.dance_dfs["C"] = shell_c
 
 
 

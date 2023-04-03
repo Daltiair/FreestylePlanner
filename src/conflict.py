@@ -1,12 +1,13 @@
 import math
 import pandas as pd
 import init
+from debug import countInstances
 from init import getNode, updateDanceDfs, buildInstTree, checkheat
 from Structures import Heat, HeatList, ConflictLog, ConflictItemSingle, ResolverConflictItemSingle, ResolverConflictLog, \
     ResolverConflictItemCouple
 
 
-def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_list, instructors_available_for_heat, inst2sing_tree_nodes, ev):
+def resolveConflictSingles(roomid, dance_df, log, heat, heat_list, instructors_available_for_heat, ev):
     resolverLog = ResolverConflictLog()
     singles_in_heat = heat.getSingles()
     instructors_in_heat = heat.getInstructors()
@@ -63,6 +64,7 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
                 print(instructors_available_for_heat[conflict_room])
                 swapper = [-1, conflict_room, conflict_index]
                 conflict_entry = heat.getRoster()[conflict_room][conflict_index].copy(True)
+                inst_tree_node = getNode(init.inst_tree, conflict_div)
                 # Set column variables based on single type
                 if conflict_entry.loc[0, "type id"] == "L":
                     contestant_col = "Lead Dancer #"
@@ -98,7 +100,7 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
                         log.clearConflict(conflict_inst, -1)
                         log.clearConflict(possible_inst, -1)  # Clear the one changed to as well
                         # print(instructors_available_for_heat[conflict_room])
-                        if conflict_inst not in instructors_available_for_heat[conflict_room] and inst_tree_nodes[conflict_room].get(conflict_inst) is not None:
+                        if conflict_inst not in instructors_available_for_heat[conflict_room] and inst_tree_node.get(conflict_inst) is not None:
                             instructors_available_for_heat[conflict_room].append(conflict_inst)
                         if possible_inst in instructors_available_for_heat[conflict_room]:
                             instructors_available_for_heat[conflict_room].remove(possible_inst)
@@ -158,7 +160,7 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
                             sing_dup = True
                         if conflict_inst in every:
                             inst_dup = True
-                            raise Exception("Instructor is in Singles list ")
+                            raise Exception("Instructor is in Singles list", conflict_inst)
                     if sing_dup:
                         resolverconflict = ResolverConflictItemSingle(4, nconflict_div, heat_index, nconflict_room, nconflict_index, instructors_in_heat, singles_in_heat, conflict_contestant, conflict, swapper)
                         nconflict_counter += 1
@@ -176,7 +178,7 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
                             nconflict_index = every.index(conflict_contestant)
                             nconflict_div = each.getDiv()[nconflict_room]
                         if conflict_inst in every:
-                            raise Exception("Instructor is in Couple list ")
+                            raise Exception("Instructor is in Couple list", conflict_inst)
                     if sing_dup:
                         resolverconflict = ResolverConflictItemSingle(5, nconflict_div, heat_index, nconflict_room, nconflict_index, instructors_in_heat, singles_in_heat, conflict_contestant, conflict, swapper)
                         nconflict_counter += 1
@@ -215,7 +217,7 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
                                     resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
                                     print(nconflict_counter, "Swappee conflict in heat,room,index", heat_index, swapping_room, placed_sing[swapping_room].index(contestant), "contestant", contestant)
                             for i, instructors in enumerate(heat.getInstructors()):
-                                if inst in instructors and inst != conflict_inst: # make sure the conflict is not because it has some inst trying to be freed
+                                if inst in instructors:
                                     dup = True
                                     nconflict_index = instructors.index(inst)
                                     nconflict_room = i
@@ -240,7 +242,7 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
                                     resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
                                 if inst in couples:
                                     dup = True
-                                    raise Exception("Instructor is in Couple list ")
+                                    raise Exception("Instructor is in Couple list", inst)
                             # if no conflicts make the swap with entry index i
                             if not dup: #and inst not in log.getInstructorsList(roomid):
                                 solution_num += 1
@@ -261,13 +263,17 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
                         continue
                     # if there are no duplicates, swap
                     print("Other Heat")
+                    each.printHeat()
+                    print("entry before", conflict_entry)
                     tmp = each.replaceContestant(swapping_room, index_2_swap, conflict_entry)
+                    print('entry after', conflict_entry)
                     each.printHeat()
                     print('Heat in question')
+                    heat.printHeat()
                     heat.replaceContestant(conflict_room, conflict_index, tmp)
                     heat.printHeat()
                     # print(instructors_available_for_heat[conflict_room])
-                    if conflict_inst not in instructors_available_for_heat[conflict_room] and inst_tree_nodes[conflict_room].get(conflict_inst) is not None:
+                    if conflict_inst not in instructors_available_for_heat[conflict_room] and inst_tree_node.get(conflict_inst) is not None:
                         instructors_available_for_heat[conflict_room].append(conflict_inst)
                     if tmp.loc[0, inst_col] in instructors_available_for_heat[conflict_room]:
                         instructors_available_for_heat[conflict_room].remove(tmp.loc[0, inst_col])
@@ -290,7 +296,9 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
                     for every in each:
                         singles_list.append(every)
                 # Check all possible singles to be matched with
-                possible_matches = inst2sing_tree_nodes[roomid][free_inst]
+                inst2sing_node = getNode(init.inst2sing_tree, heat.getDiv()[roomid])
+                inst_tree_node = getNode(init.inst_tree, heat.getDiv()[roomid])
+                possible_matches = inst2sing_node[free_inst]
                 for each in possible_matches:
                     # For every room
                     print('Contestant in question', each)
@@ -322,9 +330,9 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
                             else:
                                 raise Exception("Type id for ", conflict_entry, " is invalid")
                             # Look over possible changes to see if the placed one could change
-                            possible_changes = inst2sing_tree_nodes[conflict_room][conflict_inst]
+                            possible_changes = inst2sing_node[conflict_inst]
                             for fix in possible_changes:
-                                if dance_df[roomid][dance_df[roomid][contestant_col] == fix].empty or fix in singles_list:
+                                if dance_df[dance_df[contestant_col] == fix].empty or fix in singles_list:
                                     continue
                                 solution_num += 1
                                 if init.solution[order-1] > solution_num:
@@ -334,36 +342,41 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
                                 same_inst = conflict_entry.loc[0, inst_col]  # save the inst, pair with new contestant
                                 same_fname = conflict_entry.loc[0, inst_fname]  # save the inst, pair with new contestant
                                 same_lname = conflict_entry.loc[0, inst_lname]  # save the inst, pair with new contestant
-                                tree_prechanges = list(inst_tree_nodes[roomid].keys())
+                                tree_prechanges = list(inst_tree_node.keys())
                                 # Add the removed entry to the pool, make sure to add back to inst tree as well
-                                contestant_data = dance_df[roomid][dance_df[roomid][contestant_col] == fix].reset_index(drop=True)
+                                contestant_data = dance_df[dance_df[contestant_col] == fix].reset_index(drop=True)
                                 print("out", conflict_entry.loc[0,"Instructor Dancer #'s"], each)
-                                print("in", contestant_data.loc[0,"Instructor Dancer #'s"],fix)
-                                if dance_df[roomid][dance_df[roomid][contestant_col] == each].empty:
+                                print("in", contestant_data.loc[0,"Instructor Dancer #'s"], fix)
+                                if dance_df[dance_df[contestant_col] == each].empty:
                                     conflict_entry.loc[0, inst_fname] = ""
                                     conflict_entry.loc[0, inst_lname] = ""
                                     conflict_entry.loc[0, inst_col] = ""
                                     conflict_entry.loc[0, init.ev] = 1
-                                    dance_df[roomid] = pd.concat([dance_df[roomid], conflict_entry])
+                                    dance_df = pd.concat([dance_df, conflict_entry])
                                 else:
-                                    dance_df[roomid].loc[dance_df[roomid].loc[:, contestant_col] == conflict_entry.loc[0, contestant_col], ev] = dance_df[roomid].loc[dance_df[roomid].loc[:, contestant_col] == conflict_entry.loc[0, contestant_col], ev] + 1
+                                    dance_df.loc[dance_df.loc[:, contestant_col] == conflict_entry.loc[0, contestant_col], ev] = dance_df.loc[dance_df.loc[:, contestant_col] == conflict_entry.loc[0, contestant_col], ev] + 1
                                 conflict_entry = contestant_data.copy(True)
                                 conflict_entry.loc[0, inst_col] = same_inst
                                 conflict_entry.loc[0, inst_fname] = same_fname
                                 conflict_entry.loc[0, inst_lname] = same_lname
                                 tmp = heat.replaceContestant(conflict_room, conflict_index, conflict_entry)
                                 # Remove newly placed entry from pool
-                                if dance_df[roomid].loc[dance_df[roomid].loc[:, contestant_col] == conflict_entry.loc[0, contestant_col], ev].values[0] == 1:
-                                    dance_df[roomid] = dance_df[roomid].reset_index(drop=True)
-                                    dance_df[roomid] = dance_df[roomid].drop(dance_df[roomid][dance_df[roomid][contestant_col] == contestant_data.loc[0, contestant_col]].index)
+                                if dance_df.loc[dance_df.loc[:, contestant_col] == conflict_entry.loc[0, contestant_col], ev].values[0] == 1:
+                                    dance_df = dance_df.reset_index(drop=True)
+                                    dance_df = dance_df.drop(dance_df[dance_df[contestant_col] == contestant_data.loc[0, contestant_col]].index)
+                                    print("Removing", contestant_data.loc[0, contestant_col], "from pool")
+                                    updateDanceDfs(init.dance_dfs, dance_df, conflict_div, conflict_div)
                                 else:
-                                    dance_df[roomid].loc[dance_df[roomid][contestant_col] == contestant_data.loc[0, contestant_col], ev] = contestant_data.loc[0, ev] - 1
-                                updateDanceDfs(init.dance_dfs, dance_df[roomid], conflict_div, conflict_div)
+                                    dance_df.loc[dance_df[contestant_col] == contestant_data.loc[0, contestant_col], ev] = contestant_data.loc[0, ev] - 1
+                                if not dance_df[dance_df.loc[:, ev] < 0].empty:
+                                    pass
+                                updateDanceDfs(init.dance_dfs, dance_df, conflict_div, conflict_div)
                                 init.inst_tree = buildInstTree(init.dance_dfs, {}, ev)
-                                inst_tree_nodes[roomid] = getNode(init.inst_tree, conflict_div)
+                                inst_tree_node = getNode(init.inst_tree, conflict_div)
                                 # Only add in new instructors due to this switch
-                                instructors_available_for_heat[roomid].extend([z for z in list(inst_tree_nodes[roomid].keys()) if z not in init.starting_instructors_for_heat[roomid]])
-                                instructors_available_for_heat[roomid].extend([z for z in list(inst_tree_nodes[roomid].keys()) if z not in tree_prechanges])
+                                instructors_available_for_heat[roomid].extend([z for z in list(inst_tree_node.keys()) if z not in init.starting_instructors_for_heat[roomid]])
+                                instructors_available_for_heat[roomid].extend([z for z in list(inst_tree_node.keys()) if z not in tree_prechanges])
+                                set(instructors_available_for_heat[roomid])
                                 log.clearConflict(conflict_inst, -1)
                                 print("Resolved Conflict by swapping", each, conflict_inst, "to contestant", contestant_data.loc[0, contestant_col], contestant_data.loc[0, inst_col])
                                 return 1
@@ -394,7 +407,7 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
                         for j, every in enumerate(placed_inst):
                             if conflict_contestant in every:
                                 sing_dup = True
-                                raise Exception("Single Contestant is in Instructor list")
+                                raise Exception("Single Contestant is in Instructor list", conflict_contestant)
                             if conflict_inst in every:
                                 nconflict_index = every.index(conflict_inst)
                                 nconflict_room = j
@@ -419,7 +432,7 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
                                 sing_dup = True
                             if conflict_inst in every:
                                 inst_dup = True
-                                raise Exception("Instructor is in Singles list ")
+                                raise Exception("Instructor is in Singles list", conflict_inst)
                         if sing_dup:
                             nconflict_counter += 1
                             resolverconflict = ResolverConflictItemSingle(4, nconflict_div, heat_index, nconflict_room, nconflict_index, instructors_in_heat, singles_in_heat, conflict_contestant, conflict, [check_in_heat, free_inst, swapper])
@@ -438,7 +451,7 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
                                 nconflict_index = every.index(conflict_contestant)
                                 nconflict_div = each.getiv()[nconflict_room]
                             if conflict_inst in every:
-                                raise Exception("Instructor is in Couple list ")
+                                raise Exception("Instructor is in Couple list", conflict_inst)
                         if sing_dup:
                             nconflict_counter += 1
                             resolverconflict = ResolverConflictItemSingle(5, conflict_div, heat_index, nconflict_room, nconflict_index, instructors_in_heat, singles_in_heat, conflict_contestant, conflict, [check_in_heat, free_inst, swapper])
@@ -506,7 +519,7 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
                                         resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
                                     if inst in couples:
                                         dup = True
-                                        raise Exception("Instructor is in Couple list ")
+                                        raise Exception("Instructor is in Couple list", inst)
                                 # if no conflicts make the swap with entry index i
                                 if not dup:
                                     solution_num += 1
@@ -537,7 +550,7 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
                         # Update instructor metadata for this heat
                         # print(instructors_available_for_heat[conflict_room])
                         # add instructor back into instructor list only if not in list and still in Instructor tree
-                        if conflict_inst not in instructors_available_for_heat[conflict_room] and inst_tree_nodes[conflict_room].get(conflict_inst) is not None:
+                        if conflict_inst not in instructors_available_for_heat[conflict_room] and inst_tree_node.get(conflict_inst) is not None:
                             instructors_available_for_heat[conflict_room].append(conflict_inst)
                         if tmp.loc[0, inst_col] in instructors_available_for_heat[conflict_room]:
                             instructors_available_for_heat[conflict_room].remove(tmp.loc[0, inst_col])
@@ -555,9 +568,12 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
             init.solution[order] = 1
         if init.solved[order] == -1: # Termination after solution number is 10
             return -1
-        resolve = ResolveNOrderSingles(resolverLog, order+1, heat, heat_list, dance_df, inst_tree_nodes, roomid, instructors_available_for_heat, ev)
-        for level in instructors_available_for_heat:
-            print(level)
+        resolve = ResolveNOrderSingles(resolverLog, order+1, heat, heat_list, dance_df, roomid, instructors_available_for_heat, ev)
+        for df, info in zip(dance_df, init.debug_floors):
+            updateDanceDfs(init.dance_dfs, df, info, info)
+        countInstances(heat, heat_list)
+        # for level in instructors_available_for_heat:
+        #     print(level)
         for check in heat_list.getRostersList():
             checkheat(check)
         checkheat(heat)
@@ -569,7 +585,7 @@ def resolveConflictSingles(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
             return -1
 
 
-def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tree_nodes, roomid, instructors_available_for_heat, ev):
+def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, roomid, instructors_available_for_heat, ev):
     resolverLogn = ResolverConflictLog()
     conflicts = resolverlog.getRoomlog()
     for level in instructors_available_for_heat:
@@ -645,6 +661,7 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                     for every in each:
                         instructors_list.append(every)
                 swapper = [conflict_heat_index, conflict_room, conflict_index]
+                inst_tree_node = getNode(init.inst_tree, conflict_div)
                 # See if contestant has another free instructor to rid conflict
                 for possible_inst in conflict_entry.loc[0, "Instructor Dancer #'s"]:
                     # if instructor is not conflict instructor and not being used in heat
@@ -662,7 +679,7 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                         conflict_heat.replaceContestant(conflict_room, conflict_index, conflict_entry)
                         if conflict_heat_index == -1:
                             # print(instructors_available_for_heat[conflict_room])
-                            if conflict_inst not in instructors_available_for_heat[conflict_room] and inst_tree_nodes[conflict_room].get(conflict_inst) is not None:
+                            if conflict_inst not in instructors_available_for_heat[conflict_room] and inst_tree_node.get(conflict_inst) is not None:
                                 instructors_available_for_heat[conflict_room].append(conflict_inst)
                             if possible_inst in instructors_available_for_heat[conflict_room]:
                                 instructors_available_for_heat[conflict_room].remove(possible_inst)
@@ -704,7 +721,7 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                     for i, every in enumerate(placed_inst):
                         if conflict_contestant in every:
                             sing_dup = True
-                            raise Exception("Single Contestant is in Instructor list")
+                            raise Exception("Single Contestant is in Instructor list", conflict_contestant)
                         if conflict_inst in every:
                             nconflict_index = every.index(conflict_inst)
                             nconflict_room = i
@@ -728,7 +745,7 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                             sing_dup = True
                         if conflict_inst in every:
                             inst_dup = True
-                            raise Exception("Instructor is in Singles list ")
+                            raise Exception("Instructor is in Singles list", conflict_inst)
                     if sing_dup:
                         resolverconflict = ResolverConflictItemSingle(4, nconflict_div, heat_index, nconflict_room, nconflict_index, instructors_in_heat, singles_in_heat, conflict_contestant, conflict, swapper)
                         nconflict_counter += 1
@@ -747,7 +764,7 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                             nconflict_index = every.index(conflict_contestant)
                             nconflict_div = each.getDiv()[nconflict_room]
                         if conflict_inst in every:
-                            raise Exception("Instructor is in Couple list ")
+                            raise Exception("Instructor is in Couple list", conflict_inst)
                     if sing_dup:
                         resolverconflict = ResolverConflictItemSingle(5, nconflict_div, heat_index, nconflict_room, nconflict_index, instructors_in_heat, singles_in_heat, conflict_contestant, conflict, swapper)
                         nconflict_counter += 1
@@ -818,7 +835,7 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                                     print(nconflict_counter, "Swappee conflict in heat,room,index", heat_index, swapping_room, placed_sing[swapping_room].index(contestant), "contestant", contestant)
                                 if inst in couples:
                                     dup = True
-                                    raise Exception("Instructor is in Couple list ")
+                                    raise Exception("Instructor is in Couple list", inst)
                             # if no conflicts make the swap with entry index i
                             if not dup:
                                 solution_num += 1
@@ -846,7 +863,7 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                     conflict_heat.printHeat()
                     if conflict_heat_index == -1:
                         # print(instructors_available_for_heat[conflict_room])
-                        if conflict_inst not in instructors_available_for_heat[conflict_room] and inst_tree_nodes[conflict_room].get(conflict_inst) is not None:
+                        if conflict_inst not in instructors_available_for_heat[conflict_room] and inst_tree_node.get(conflict_inst) is not None:
                             instructors_available_for_heat[conflict_room].append(conflict_inst)
                         if tmp.loc[0, inst_col] in instructors_available_for_heat[conflict_room]:
                             instructors_available_for_heat[conflict_room].remove(tmp.loc[0, inst_col])
@@ -868,13 +885,11 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                 for each in instructors_to_compare:
                     for every in each:
                         instructors_list.append(every)
-                if conflict_heat_index == -1:  # If the conflict is in the og heat set df pool as oone to modify and check
-                    conflict_df = dance_df[conflict_room]
-                else:  # If the conflict attempting a resolve is in external heat, set df as one in dance df
-                    conflict_df = getNode(init.dance_dfs, conflict_div)
+                conflict_df = getNode(init.dance_dfs, conflict_div)
                 # Check all possible singles to be matched with
-                inst2sing_tree_node = getNode(init.inst2sing_tree, conflict_div)
-                possible_matches = inst2sing_tree_node[free_inst]
+                inst_tree_node = getNode(init.inst_tree, conflict_div)
+                inst2sing_node = getNode(init.inst2sing_tree, conflict_div)
+                possible_matches = inst2sing_node[free_inst]
                 for each in possible_matches:
                     if type(conflict_df) != dict:  # If this is a past heat that has finsihed already skip looking into pool
                         # For every room
@@ -908,7 +923,7 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                                         else:
                                             raise Exception("Type id for " + conflict_entry + " is invalid")
                                 # Look over possible changes to see if the place one could change
-                                possible_changes = inst2sing_tree_node[conflict_inst]
+                                possible_changes = inst2sing_node[conflict_inst]
                                 for fix in possible_changes:
                                     if conflict_df[conflict_df[contestant_col] == fix].empty or fix in singles_list:
                                         continue
@@ -922,7 +937,7 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                                     same_lname = conflict_entry.loc[0, inst_lname]  # save the inst, pair with new contestant
                                     if conflict_div in heat.getDiv():
                                         roominq = heat.getDiv().index(conflict_div)
-                                        tree_prechanges = list(inst_tree_nodes[roominq].keys())
+                                        tree_prechanges = list(inst_tree_node.keys())
                                     # Add the removed entry back to the pool
                                     contestant_data = conflict_df[conflict_df[contestant_col] == fix].reset_index(drop=True)
                                     print("out", conflict_entry.loc[0, "Instructor Dancer #'s"], each)
@@ -945,10 +960,10 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                                     tmp = conflict_heat.replaceContestant(conflict_room, conflict_index, conflict_entry)
                                     # Remove newly placed entry from pool
                                     if conflict_df.loc[conflict_df[contestant_col] == conflict_entry.loc[0, contestant_col], ev].values[0] == 1:
-                                        print("removing", fix, "from the df")
-                                        print(contestant_data, conflict_df)
+                                        print("removing", fix, "from the df pool")
                                         conflict_df = conflict_df.reset_index(drop=True)
                                         conflict_df = conflict_df.drop(conflict_df[conflict_df[contestant_col] == contestant_data.loc[0, contestant_col]].index)
+                                        updateDanceDfs(init.dance_dfs, conflict_df, conflict_div, conflict_div)
                                     else:
                                         print("decrement", fix, "from the df")
                                         conflict_df.loc[conflict_df.loc[:, contestant_col] == contestant_data.loc[0, contestant_col], ev] = contestant_data.loc[0, ev] - 1
@@ -956,15 +971,13 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                                     init.inst_tree = buildInstTree(init.dance_dfs, {}, ev)
                                     # If a division that is in current heat
                                     if conflict_div in heat.getDiv():
-                                        roominq = heat.getDiv().index(conflict_div)
-                                        dance_df[roominq] = conflict_df  # if conflict in og heat update the dance_df list
-                                        if dance_df[roominq].empty:
-                                            pass
-                                        inst_tree_nodes[roominq] = getNode(init.inst_tree, conflict_div)
-                                        print("adding to inst list", [z for z in list(inst_tree_nodes[roominq].keys()) if z not in init.starting_instructors_for_heat[roominq]])
-                                        print("adding to inst list", [z for z in list(inst_tree_nodes[roominq].keys()) if z not in tree_prechanges])
-                                        instructors_available_for_heat[roominq].extend([z for z in list(inst_tree_nodes[roominq].keys()) if z not in init.starting_instructors_for_heat[roominq]])
-                                        instructors_available_for_heat[roominq].extend([z for z in list(inst_tree_nodes[roominq].keys()) if z not in tree_prechanges])
+                                        # roominq = heat.getDiv().index(conflict_div)
+                                        # dance_df[roominq] = conflict_df  # if conflict in og heat update the dance_df list
+                                        inst_tree_node = getNode(init.inst_tree, conflict_div)
+                                        print("adding to inst list", [z for z in list(inst_tree_node.keys()) if z not in init.starting_instructors_for_heat[roominq]])
+                                        print("adding to inst list", [z for z in list(inst_tree_node.keys()) if z not in tree_prechanges])
+                                        instructors_available_for_heat[roominq].extend([z for z in list(inst_tree_node.keys()) if z not in init.starting_instructors_for_heat[roominq]])
+                                        instructors_available_for_heat[roominq].extend([z for z in list(inst_tree_node.keys()) if z not in tree_prechanges])
                                         set(instructors_available_for_heat[roominq])
                                     print("Resolved " + str(order) + " order conflict by swapping", conflict_contestant, conflict_inst, "to contestant", contestant_data.loc[0,contestant_col], "in heat", conflict_heat_index)
                                     return nminus
@@ -996,7 +1009,7 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                         for j, every in enumerate(placed_inst):
                             if conflict_contestant in every:
                                 sing_dup = True
-                                raise Exception("Single Contestant is in Instructor list")
+                                raise Exception("Single Contestant is in Instructor list", conflict_contestant)
                             if conflict_inst in every:
                                 nconflict_index = every.index(conflict_inst)
                                 nconflict_room = j
@@ -1020,7 +1033,7 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                                 sing_dup = True
                             if conflict_inst in every:
                                 inst_dup = True
-                                raise Exception("Instructor is in Singles list ")
+                                raise Exception("Instructor is in Singles list", conflict_inst)
                         if sing_dup:
                             resolverconflict = ResolverConflictItemSingle(4, nconflict_div, heat_index, nconflict_room, nconflict_index, instructors_in_heat, singles_in_heat, conflict_contestant, conflict, [check_in_heat, free_inst, swapper])
                             nconflict_counter += 1
@@ -1038,7 +1051,7 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                                 nconflict_index = every.index(conflict_contestant)
                                 nconflict_div = each.getDiv()[nconflict_room]
                             if conflict_inst in every:
-                                raise Exception("Instructor is in Couple list ")
+                                raise Exception("Instructor is in Couple list", conflict_inst)
                         if sing_dup:
                             resolverconflict = ResolverConflictItemSingle(5, nconflict_div, heat_index, nconflict_room, nconflict_index, instructors_in_heat, singles_in_heat, conflict_contestant, conflict, [check_in_heat, free_inst, swapper])
                             nconflict_counter += 1
@@ -1113,7 +1126,7 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                                               placed_sing[swapping_room].index(contestant), "contestant", contestant, nconflict_div)
                                         if inst in couples:
                                             dup = True
-                                            raise Exception("Instructor is in Couple list ")
+                                            raise Exception("Instructor is in Couple list", inst)
                                 # if no conflicts make the swap with entry index
                                 if not dup:
                                     solution_num += 1
@@ -1143,7 +1156,7 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                         conflict_heat.printHeat()
                         if conflict_heat_index == -1:
                             # print(instructors_available_for_heat[conflict_room])
-                            if conflict_inst not in instructors_available_for_heat[conflict_room] and inst_tree_nodes[conflict_room].get(conflict_inst) is not None:
+                            if conflict_inst not in instructors_available_for_heat[conflict_room] and inst_tree_node.get(conflict_inst) is not None:
                                 instructors_available_for_heat[conflict_room].append(conflict_inst)
                             if tmp.loc[0, inst_col] in instructors_available_for_heat[conflict_room]:
                                 instructors_available_for_heat[conflict_room].remove(tmp.loc[0, inst_col])
@@ -1157,7 +1170,10 @@ def ResolveNOrderSingles(resolverlog, order, heat, heat_list, dance_df, inst_tre
                 init.solution[order] = 1
             if init.solved[order] == -1:  # Termination after solution number is 10
                 return -1
-            resolve = ResolveNOrderSingles(resolverLogn, order + 1, heat, heat_list, dance_df, inst_tree_nodes, roomid, instructors_available_for_heat, ev)
+            resolve = ResolveNOrderSingles(resolverLogn, order + 1, heat, heat_list, dance_df, roomid, instructors_available_for_heat, ev)
+            for df, info in zip(dance_df, init.debug_floors):
+                updateDanceDfs(init.dance_dfs, df, info, info)
+            countInstances(heat, heat_list)
             for level in instructors_available_for_heat:
                 print(level)
             for check in heat_list.getRostersList():
@@ -1268,10 +1284,10 @@ def resolveConflictCouples(roomid, dance_df, inst_tree_nodes, log, heat, heat_li
                     for i, every in enumerate(placed_inst):
                         if conflict_lead in every:
                             l_dup = True
-                            raise Exception("Couples Contestant is in Instructor list")
+                            raise Exception("Couples Contestant is in Instructor list", conflict_lead)
                         if conflict_follow in every:
                             f_dup = True
-                            raise Exception("Couples Contestant is in Instructor list")
+                            raise Exception("Couples Contestant is in Instructor list", conflict_follow)
                     # Check this heats singles
                     placed_sing = each.getSingles()
                     l_dup = False
@@ -1511,10 +1527,10 @@ def ResolveNOrderCouples(resolverlog, order, heat, heat_list, dance_df, inst_tre
                     for i, every in enumerate(placed_inst):
                         if conflict_lead in every:
                             l_dup = True
-                            raise Exception("Couples Contestant is in Instructor list")
+                            raise Exception("Couples Contestant is in Instructor list", conflict_lead)
                         if conflict_follow in every:
                             f_dup = True
-                            raise Exception("Couples Contestant is in Instructor list")
+                            raise Exception("Couples Contestant is in Instructor list", conflict_follow)
                     # Check this heats singles
                     placed_sing = each.getSingles()
                     l_dup = False

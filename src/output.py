@@ -33,6 +33,7 @@ def buildEvent(heats, eventName):
             wb.save(filepath + excelfile)
             rowindex = 2
             for ev in events:  # Loop all events for this genre and syllabus
+                init.ev = ev
                 heatslist = heats[each][every][ev]  # Print all heats for the event
                 if heatslist == []:
                     continue
@@ -49,8 +50,6 @@ def buildEvent(heats, eventName):
                         for roomid, room in enumerate(heat.getRoster()):  # For each ballroom print out a list, TODO: may need a -1
                             rowindex += 1
                             startingrow = rowindex
-                            # if room == []:
-                            #     rowindex += 2
                             # print out each contestant, formatting df to relevant columns
                             for i, contestant in enumerate(room):
                                 appendParticipantSheet(heat.getDiv()[roomid], every, ev, roomid, contestant, heat, heatslist)
@@ -148,7 +147,10 @@ def buildEvent(heats, eventName):
                         elif roomid > 0 and roomindex == 1:
                             roommax = couples_per_floor + 1
                             # Replace lvl # with it's corresponding name EX: AB, FB AS-FS
-                            div = heatslist.getRostersList()[heatiter].getDiv()[roomid]
+                            try:
+                                div = heatslist.getRostersList()[heatiter].getDiv()[roomid]
+                            except:
+                                print(index, heatiter, roomid, rowindex)
                             if div == []:
                                 sheet[init.excelcols[0] + str(index)] = 'Floor ' + str(roomid + 1) + " Not used"  # ILLEGAL_CHARACTERS_RE.sub(r'', str(room))
                                 sheet[init.excelcols[0] + str(index)].fill = PatternFill("solid", start_color="a9ebba")
@@ -156,9 +158,9 @@ def buildEvent(heats, eventName):
                                 sheet[init.excelcols[0] + str(index)].alignment = Alignment(horizontal='left')
                                 continue
                             if div[0] == "S":
-                                for lev in init.lvl_conversion:
-                                    if lev in div:
-                                       div[div.index(lev)] = heatslist.getEventLvlSingles()[lev]
+                                # for lev in init.lvl_conversion:
+                                #     if lev in div:
+                                #        div[div.index(lev)] = heatslist.getEventLvlSingles()[lev]
                                 for age in heatslist.getEventAgesSingles():
                                     if age in div:
                                         printagelist = heatslist.getEventAgesSingles().copy()
@@ -169,9 +171,9 @@ def buildEvent(heats, eventName):
                                         else:
                                             div[div.index(age)] = str(printagelist[age_index - 1] + 1) + "-" + str(printagelist[age_index])
                             if div[0] == "C":
-                                for lev in init.lvl_conversion:
-                                    if lev in div:
-                                        div[div.index(lev)] = heatslist.getEventLvlCouples()[lev]
+                                # for lev in init.lvl_conversion:
+                                #     if lev in div:
+                                #         div[div.index(lev)] = heatslist.getEventLvlCouples()[lev]
                                 for age in heatslist.getEventAgesCouples():
                                     if age in div:
                                         printagelist = heatslist.getEventAgesCouples().copy()
@@ -200,10 +202,13 @@ def buildEvent(heats, eventName):
                     if sheet["A" + str(index)].value == None:
                         sheet[idcol + str(index)].fill = PatternFill("solid", start_color="f50031")
                     idcol = init.excelcols[0]
-                    if sheet[idcol+str(index)].value == "C":
+                    if sheet[idcol+str(index)].value == "L":
                         sheet[idcol+str(index)].fill = PatternFill("solid", start_color="a2c2f5")
                     elif sheet[idcol+str(index)].value == "F":
                         sheet[idcol+str(index)].fill = PatternFill("solid", start_color="f2a7aa")
+                    elif sheet[idcol+str(index)].value == "C":
+                        sheet[idcol+str(index)].fill = PatternFill("solid", start_color="cc9ee8")
+
                     # level color code
                     levcol = init.excelcols[7]
                     if sheet[levcol + str(index)].value is not None:
@@ -229,12 +234,13 @@ def buildEvent(heats, eventName):
                 for col, dim in zip(init.excelcols, init.exceldimensions):
                     sheet.column_dimensions[col].width = dim
             wb.save(filepath+excelfile)
+            clearParticipantSheetCounts()
     print()
     print("Creating Personal Heat Sheets")
     # Loop over all participant sheets and print them
     participants = list(init.participantsheets.keys())
     for each in participants:
-        df = init.participantsheets[each]
+        df = init.participantsheets[each]["Data"]
         # Create a new directory
         filepath = os.getcwd().replace('\src', "") + "/Output" + "/" + "Personal Sheets" + "/" + str(each) + "/"
         # filepath = filepath.replace('\\', "/")
@@ -263,26 +269,80 @@ def buildEvent(heats, eventName):
 def createParticipantSheets():
     # Loop over each data set and create an empty df where there specific heat data will be added
     # only add one if not already there
+
     for row, data in init.df_sing.iterrows():
         dancer = data.loc["Dancer #"]
         if init.participantsheets.get(dancer) is None:
-            init.participantsheets[dancer] = pd.DataFrame(init.participantsheetcols)
+            init.participantsheets[dancer] = {}
+            init.participantsheets[dancer]["Data"] = pd.DataFrame(init.participantsheetcols)
+            init.participantsheets[dancer]["Count"] = 0
 
     for row, data in init.df_inst.iterrows():
         dancer = data.loc["Dancer #"]
         if init.participantsheets.get(dancer) is None:
-            init.participantsheets[dancer] = pd.DataFrame(init.participantsheetcols)
+            init.participantsheets[dancer] = {}
+            init.participantsheets[dancer]["Data"] = pd.DataFrame(init.participantsheetcols)
+            init.participantsheets[dancer]["Count"] = 0
 
     for row, data in init.df_coup.iterrows():
         dancer = data.loc["Lead Dancer #"]
         if init.participantsheets.get(dancer) is None:
-            init.participantsheets[dancer] = pd.DataFrame(init.participantsheetcols)
+            init.participantsheets[dancer] = {}
+            init.participantsheets[dancer]["Data"] = pd.DataFrame(init.participantsheetcols)
+            init.participantsheets[dancer]["Count"] = 0
         dancer = data.loc["Follow Dancer #"]
         if init.participantsheets.get(dancer) is None:
-            init.participantsheets[dancer] = pd.DataFrame(init.participantsheetcols)
+            init.participantsheets[dancer] = {}
+            init.participantsheets[dancer]["Data"] = pd.DataFrame(init.participantsheetcols)
+            init.participantsheets[dancer]["Count"] = 0
+
+
+def clearParticipantSheetCounts():
+    # Loop over each data set and clear the number of times it shows up in the sorted heats
+    # If not equal to prints to console TODO print to a file or raise exception
+
+    if init.ev in init.df_sing.columns:
+        Single = init.df_sing[init.df_sing[init.ev] > 0]
+        for row, data in init.df_sing.iterrows():
+            dancer = data.loc["Dancer #"]
+            if init.participantsheets.get(dancer) is not None:  # If the entry is present
+                if init.participantsheets[dancer]["Count"] != data[init.ev]:  # If not equal to the input form
+                    print(dancer, "input entry count", init.participantsheets[dancer]["Count"],
+                          "!= output sorted count", data[init.ev], "in event", init.ev)
+                init.participantsheets[dancer]["Count"] = 0
+                # Drop the entry from the DF
+                # Single = Single.reset_index(drop=True)
+                Single = Single.drop(Single[Single["Dancer #"] == dancer].index)
+        # If there are some left they were not sorted into the output
+        if not Single.empty:
+            print(Single[['Dancer #']], "input entry is not present in sorted event output", init.ev)
+
+    if init.ev in init.df_coup.columns:
+        Couple = init.df_coup[init.df_coup[init.ev] > 0]
+
+        for row, data in init.df_coup.iterrows():
+            dancer = data.loc["Lead Dancer #"]
+            dancerf = data.loc["Follow Dancer #"]
+            if init.participantsheets.get(dancer) is not None:
+                if init.participantsheets[dancer]["Count"] != data[init.ev]:
+                    print(dancer, "input entry count", init.participantsheets[dancer]["Count"], "!= output sorted count", data[init.ev], "in event", init.ev)
+                init.participantsheets[dancer]["Count"] = 0
+
+            if init.participantsheets.get(dancerf) is not None:
+                if init.participantsheets[dancerf]["Count"] != data[init.ev]:
+                    print(dancerf, "input entry count", init.participantsheets[dancer]["Count"], "!= output sorted count", data[init.ev], "in event", init.ev)
+                init.participantsheets[dancerf]["Count"] = 0
+
+            # Drop the entry from the DF
+            # Couple = Couple.reset_index(drop=True)
+            Couple = Couple.drop(Couple[(Couple["Lead Dancer #"] == dancer) and (Couple["Follow Dancer #"] == dancerf)].index)
+            # If there are some left they were not sorted into the output
+        if not Couple.empty:
+            print(Couple[["Lead Dancer #", "Follow Dancer #"]], "input entry is not present in sorted event output", init.ev)
 
 
 def appendParticipantSheet(div, syllabus, ev, roomid, roster_entry, heat, heatslist):
+
     typeid = roster_entry.loc[0, "type id"]
     if typeid == "C":
         leads_df = init.df_coup
@@ -319,37 +379,43 @@ def appendParticipantSheet(div, syllabus, ev, roomid, roster_entry, heat, heatsl
     printstr = ""
     for d in div:
         printstr = printstr + str(d) + ", "
+
     # Set Participant df data
     dancer = roster_entry.loc[0, lead_col]
     partner = roster_entry.loc[0, follow_col]
     partner_n = roster_entry.loc[0, "Follow First Name"] + " " + roster_entry.loc[0, "Follow Last Name"]
-    participantsheetentry = {"Day": [1], "Heat #": [heat.getKey()], "Floor": [roomid], "Partner #": [partner], "Partner Name": [partner_n], "Event": [ev], "Syllabus": [syllabus],
-                            "Division": [printstr[:-2]]}
+    participantsheetentry = {"Day": [1], "Heat #": [heat.getKey()], "Floor": [roomid+1], "Partner #": [partner],
+                             "Partner Name": [partner_n], "Event": [ev], "Syllabus": [syllabus], "Division": [printstr[:-2]]}
     participantsheetentry = pd.DataFrame(participantsheetentry)
     # participantsheetentry = participantsheetentry.astype({"Day": int, "Heat #": int, "Floor": int, "Partner #": int})
     participantsheetentry = participantsheetentry.astype({"Day": int, "Floor": int, "Partner #": int})
-    if not init.participantsheets[dancer].empty:
-        pass
-    init.participantsheets[dancer] = pd.concat([init.participantsheets[dancer], participantsheetentry])
-    # init.participantsheets[dancer] = init.participantsheets[dancer].astype({"Day": int, "Heat #": int, "Floor": int, "Partner #": int})
-    init.participantsheets[dancer] = init.participantsheets[dancer].astype({"Day": int, "Floor": int, "Partner #": int})
+    # if not init.participantsheets[dancer].empty:
+    #     pass
+    init.participantsheets[dancer]["Data"] = pd.concat([init.participantsheets[dancer]["Data"], participantsheetentry])
+    # init.participantsheets[dancer]["Data"] = init.participantsheets[dancer]["Data"].astype({"Day": int, "Heat #": int, "Floor": int, "Partner #": int})
+    init.participantsheets[dancer]["Data"] = init.participantsheets[dancer]["Data"].astype({"Day": int, "Floor": int, "Partner #": int})
+    init.participantsheets[dancer]["Count"] += 1
+    # init.participantsheets[dancer]["div"] = div
+    # init.participantsheets[dancer]["tid"] = "L"
 
     # Set Participant df data
     dancer = roster_entry.loc[0, follow_col]
     partner = roster_entry.loc[0, lead_col]
     partner_n = roster_entry.loc[0, "Lead First Name"] + " " + roster_entry.loc[0, "Lead Last Name"]
-    participantsheetentry = {"Day": [1], "Heat #": [heat.getKey()], "Floor": [roomid], "Partner #": [partner], "Partner Name": [partner_n], "Event": [ev],
-                             "Syllabus": [syllabus],
-                             "Division": [printstr[:-2]]}
+    participantsheetentry = {"Day": [1], "Heat #": [heat.getKey()], "Floor": [roomid+1], "Partner #": [partner],
+                             "Partner Name": [partner_n], "Event": [ev],
+                             "Syllabus": [syllabus], "Division": [printstr[:-2]]}
     participantsheetentry = pd.DataFrame(participantsheetentry)
     # participantsheetentry = participantsheetentry.astype({"Day": int, "Heat #": int, "Floor": int, "Partner #": int})
     participantsheetentry = participantsheetentry.astype({"Day": int, "Floor": int, "Partner #": int})
-    if not init.participantsheets[dancer].empty:
-        pass
-    init.participantsheets[dancer] = pd.concat([init.participantsheets[dancer], participantsheetentry])
-    # init.participantsheets[dancer] = init.participantsheets[dancer].astype({"Day": int, "Heat #": int, "Floor": int, "Partner #": int})
-    init.participantsheets[dancer] = init.participantsheets[dancer].astype({"Day": int, "Floor": int, "Partner #": int})
-
+    # if not init.participantsheets[dancer]["Data"].empty:
+    #     pass
+    init.participantsheets[dancer]["Data"] = pd.concat([init.participantsheets[dancer]["Data"], participantsheetentry])
+    # init.participantsheets[dancer]["Data"] = init.participantsheets[dancer]["Data"].astype({"Day": int, "Heat #": int, "Floor": int, "Partner #": int})
+    init.participantsheets[dancer]["Data"] = init.participantsheets[dancer]["Data"].astype({"Day": int, "Floor": int, "Partner #": int})
+    init.participantsheets[dancer]["Count"] += 1
+    # init.participantsheets[dancer]["div"] = div
+    # init.participantsheets[dancer]["tid"] = "F"
 
 def makeHeatDict(genrelist, df_cat):
     heats = {}
@@ -422,165 +488,3 @@ def buildEventfast(heatlist, eventName):
             rowindex += 1
     # go over the printed rows and highlight cells for easy identify
     rowindex -= 2
-                # wb = load_workbook(filename=filepath + excelfile)
-                # sheet = wb.get_sheet_by_name(ev)
-                # prev_floor = 1
-                # # print("Heats", len(heatslist.getRostersList()))
-                # for i in range(rowindex-1):
-                #     for col, aline in zip(init.excelcols, init.excelalignments):
-                #         sheet[col + str(i+1)].alignment = Alignment(horizontal=aline)
-                # rooms = heatslist.getFloors()
-                # roomid = 0
-                # roomindex = 0
-                # roommax = couples_per_floor + 3
-                # heatiter = 0
-                # for i in range(rowindex):
-                #     # Iterator data
-                #     index = i + 1
-                #     if roomindex < roommax:
-                #         roomindex += 1
-                #     else:
-                #         roomindex = 1
-                #         if roomid < (rooms - 1):
-                #             roomid += 1
-                #         else:
-                #             roomid = 0
-                #             heatiter = heatiter + 1
-                #             # wb.save(filepath + excelfile)
-                #     # If a non contestant data column, add identifier rows, text and color
-                #     if roomindex == 1 or (roomid == 0 and roomindex == 2):
-                #         if roomid == 0:
-                #             roommax = couples_per_floor + 3
-                #             if roomindex == 1:
-                #                 try:
-                #                     sheet[init.excelcols[0] + str(index)] = heatslist.getRostersList()[heatiter].getKey()
-                #                     sheet[init.excelcols[0] + str(index)].fill = PatternFill("solid", start_color="e6bee2")
-                #                 except:
-                #                     print(index, heatiter, roomid, rowindex)
-                #             elif roomindex == 2:
-                #                 # Replace lvl # with it's corresponding name EX: AB, FB AS-FS
-                #                 try:
-                #                     div = heatslist.getRostersList()[heatiter].getDiv()[roomid]
-                #                 except:
-                #                     print(index, heatiter, roomid, rowindex)
-                #                 if div == []:
-                #                     sheet[init.excelcols[0] + str(index)] = 'Floor ' + str(roomid + 1) + " Not used"  # ILLEGAL_CHARACTERS_RE.sub(r'', str(room))
-                #                     sheet[init.excelcols[0] + str(index)].fill = PatternFill("solid", start_color="a9ebba")
-                #                     sheet.merge_cells(init.excelcols[0] + str(index) + ":" + init.excelcols[-1] + str(index))
-                #                     sheet[init.excelcols[0] + str(index)].alignment = Alignment(horizontal='left')
-                #                     continue
-                #                 if div[0] == "S":
-                #                     for lev in init.lvl_conversion:
-                #                         if lev in div:
-                #                             div[div.index(lev)] = heatslist.getEventLvlSingles()[lev]
-                #                     for age in heatslist.getEventAgesSingles():
-                #                         if age in div:
-                #                             printagelist = heatslist.getEventAgesSingles().copy()
-                #                             printagelist.insert(0, 17)
-                #                             age_index = printagelist.index(div[div.index(age)])
-                #                             if age_index == printagelist[-1]:  # If the last bracket make it '86+'
-                #                                 div[div.index(age)] = str(printagelist[age_index - 1] + 1) + "+"
-                #                             else:
-                #                                 div[div.index(age)] = str(printagelist[age_index - 1] + 1) + "-" + str(printagelist[age_index])
-                #                 if div[0] == "C":
-                #                     for lev in init.lvl_conversion:
-                #                         if lev in div:
-                #                             div[div.index(lev)] = heatslist.getEventLvlCouples()[lev]
-                #                     for age in heatslist.getEventAgesCouples():
-                #                         if age in div:
-                #                             printagelist = heatslist.getEventAgesCouples().copy()
-                #                             printagelist.insert(0, 17)
-                #                             age_index = printagelist.index(div[div.index(age)])
-                #                             if age_index == printagelist[-1]:  # If the last bracket make it '86+'
-                #                                 div[div.index(age)] = str(printagelist[age_index - 1] + 1) + "+"
-                #                             else:
-                #                                 div[div.index(age)] = str(printagelist[age_index - 1] + 1) + "-" + str(printagelist[age_index])
-                #                 printstr = ""
-                #                 for d in div:
-                #                     printstr = printstr + str(d) + ", "
-                #                 sheet[init.excelcols[0] + str(index)] = 'Floor ' + str(roomid + 1) + " " + printstr[:-2]  # ILLEGAL_CHARACTERS_RE.sub(r'', str(room))
-                #                 sheet[init.excelcols[0] + str(index)].fill = PatternFill("solid", start_color="a9ebba")
-                #         elif roomid > 0 and roomindex == 1:
-                #             roommax = couples_per_floor + 1
-                #             # Replace lvl # with it's corresponding name EX: AB, FB AS-FS
-                #             div = heatslist.getRostersList()[heatiter].getDiv()[roomid]
-                #             if div == []:
-                #                 sheet[init.excelcols[0] + str(index)] = 'Floor ' + str(roomid + 1) + " Not used"  # ILLEGAL_CHARACTERS_RE.sub(r'', str(room))
-                #                 sheet[init.excelcols[0] + str(index)].fill = PatternFill("solid", start_color="a9ebba")
-                #                 sheet.merge_cells(init.excelcols[0] + str(index) + ":" + init.excelcols[-1] + str(index))
-                #                 sheet[init.excelcols[0] + str(index)].alignment = Alignment(horizontal='left')
-                #                 continue
-                #             if div[0] == "S":
-                #                 for lev in init.lvl_conversion:
-                #                     if lev in div:
-                #                        div[div.index(lev)] = heatslist.getEventLvlSingles()[lev]
-                #                 for age in heatslist.getEventAgesSingles():
-                #                     if age in div:
-                #                         printagelist = heatslist.getEventAgesSingles().copy()
-                #                         printagelist.insert(0, 17)
-                #                         age_index = printagelist.index(div[div.index(age)])
-                #                         if age_index == printagelist[-1]:  # If the last bracket make it '86+'
-                #                             div[div.index(age)] = str(printagelist[age_index - 1] + 1) + "+"
-                #                         else:
-                #                             div[div.index(age)] = str(printagelist[age_index - 1] + 1) + "-" + str(printagelist[age_index])
-                #             if div[0] == "C":
-                #                 for lev in init.lvl_conversion:
-                #                     if lev in div:
-                #                         div[div.index(lev)] = heatslist.getEventLvlCouples()[lev]
-                #                 for age in heatslist.getEventAgesCouples():
-                #                     if age in div:
-                #                         printagelist = heatslist.getEventAgesCouples().copy()
-                #                         printagelist.insert(0, 17)
-                #                         age_index = printagelist.index(div[div.index(age)])
-                #                         if age_index == printagelist[-1]: # If the last bracket make it '86+'
-                #                             div[div.index(age)] = str(printagelist[age_index-1] + 1) + "+"
-                #                         else:
-                #                             div[div.index(age)] = str(printagelist[age_index-1] + 1) + "-" + str(printagelist[age_index])
-                #             printstr = ""
-                #             for d in div:
-                #                 printstr = printstr + str(d) + ", "
-                #             sheet[init.excelcols[0] + str(index)] = 'Floor ' + str(roomid + 1) + " " + printstr[:-2] # ILLEGAL_CHARACTERS_RE.sub(r'', str(room))
-                #             sheet[init.excelcols[0] + str(index)].fill = PatternFill("solid", start_color="a9ebba")
-                #         sheet.merge_cells(init.excelcols[0]+str(index)+":"+init.excelcols[-1]+str(index))
-                #         sheet[init.excelcols[0] + str(index)].alignment = Alignment(horizontal='left')
-                #         # prev_floor = index
-                #         # wb.save(filepath+excelfile)
-                #         continue
-                #     # If Contestant Data header row
-                #     if roomid == 0 and roomindex == 3:
-                #         for col in init.excelcols:
-                #             sheet[col + str(index)].alignment = Alignment(horizontal='center')
-                #
-                #     # Color code the lvl metals
-                #     if sheet["A" + str(index)].value == None:
-                #         sheet[idcol + str(index)].fill = PatternFill("solid", start_color="f50031")
-                #     idcol = init.excelcols[0]
-                #     if sheet[idcol+str(index)].value == "C":
-                #         sheet[idcol+str(index)].fill = PatternFill("solid", start_color="a2c2f5")
-                #     elif sheet[idcol+str(index)].value == "F":
-                #         sheet[idcol+str(index)].fill = PatternFill("solid", start_color="f2a7aa")
-                #     # level color code
-                #     levcol = init.excelcols[7]
-                #     if sheet[levcol + str(index)].value is not None:
-                #         # Bronze/NC
-                #         if sheet[levcol+str(index)].value[0] == "B" or sheet[levcol+str(index)].value[0] == "N":
-                #             if sheet[levcol+str(index)].value[1] == "1" or sheet[levcol+str(index)].value[1] == "2" or sheet[levcol+str(index)].value[1] == "C":
-                #                 sheet[levcol+str(index)].fill = PatternFill("solid", start_color="eddcca")
-                #             if sheet[levcol+str(index)].value[1] == "3" or sheet[levcol+str(index)].value[1] == "4":
-                #                 sheet[levcol+str(index)].fill = PatternFill("solid", start_color="f2ba7e")
-                #         # Silver
-                #         if sheet[levcol+str(index)].value[0] == "S":
-                #             if sheet[levcol+str(index)].value[1] == "1" or sheet[levcol+str(index)].value[1] == "2":
-                #                 sheet[levcol+str(index)].fill = PatternFill("solid", start_color="e0dfde")
-                #             if sheet[levcol+str(index)].value[1] == "3" or sheet[levcol+str(index)].value[1] == "4":
-                #                 sheet[levcol+str(index)].fill = PatternFill("solid", start_color="a39e99")
-                #         # Gold
-                #         if sheet[levcol+str(index)].value[0] == "G":
-                #             if sheet[levcol+str(index)].value[1] == "1" or sheet[levcol+str(index)].value[1] == "2":
-                #                 sheet[levcol+str(index)].fill = PatternFill("solid", start_color="f0eec5")
-                #             if sheet[levcol+str(index)].value[1] == "3" or sheet[levcol+str(index)].value[1] == "4" or sheet[levcol+str(index)].value[1] == "B":
-                #                 sheet[levcol+str(index)].fill = PatternFill("solid", start_color="f5ee71")
-                # # Set column dimensions
-                # for col, dim in zip(init.excelcols, init.exceldimensions):
-                #     sheet.column_dimensions[col].width = dim
-            # wb.save(filepath+excelfile)

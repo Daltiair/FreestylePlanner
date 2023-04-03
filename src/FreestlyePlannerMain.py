@@ -6,6 +6,7 @@ Written by Dalton Dabney 7/9/22
 import sys
 
 from methods import *
+from output import *
 from selection import *
 # from gui import *
 import getpass
@@ -15,6 +16,7 @@ import hashlib
 def startProcess():
     # try:
     heats = partitionData()
+    createParticipantSheets()
     Selection(heats)
     # except Exception as e:
     #     print(e)

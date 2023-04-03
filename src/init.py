@@ -1,6 +1,6 @@
 '''File to house global variables and helper methods'''
 
-# Data and partition variables
+# Data and partition variables, Static
 df_Dnum = 0
 df_cat = 0
 df_inst = 0
@@ -10,6 +10,9 @@ df_pro = 0
 max_dance_couples = 0
 max_heats = 0
 eventName = 0
+
+# Dynamic Event variables and Structures
+logString = ""
 age_brackets = []
 dance_dfs = 0
 inst_tree = 0
@@ -20,9 +23,12 @@ lvls = ["AB", "FB", "AS", "FS", 'AG', "FG"]
 lvl_conversion = [0, 1, 2, 3, 4, 5]
 eventlvlnames_s = []
 eventlvlnames_c = []
+eventages_s = []
+eventages_c = []
 ev = "None"
+debug_floors = []
 
-# Conflict variables
+# Conflict variables, Static
 # solved = 0  # counts how many resolveConflict() calls for this pair search
 # nsolved = 0  # counts how many resolveNConflict() calls for this pair search
 # solutioncount = 0  # holds which solution in the chain I am on
@@ -39,7 +45,7 @@ starting_instructors_for_heat = []
 participantsheetcols = {"Day": [], "Heat #": [], "Floor": [], "Partner #": [], "Partner Name": [], "Event": [], "Syllabus":[], "Division": []}
 participantsheets = {}
 participantsheet_excelcols = ["A", "B", "C", "D", "E", "F", "G", "H"]
-participantsheet_exceldimensions = [9, 30, 9, 15, 18, 18, 9, 18]
+participantsheet_exceldimensions = [9, 35, 9, 15, 18, 24, 9, 18]
 participantsheet_excelalignments = ["right", "center", 'right', "right", 'center', 'center', 'center', 'center']
 # Heat sheets
 excelcols = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
@@ -67,7 +73,7 @@ def deleteEmpty(dance_dfs):
             deleteEmpty(dance_dfs[each])
             if len(dance_dfs[each]) == 0:  # If dict is now empty, delete it
                 del dance_dfs[each]
-        elif dance_dfs[each].empty:
+        elif (dance_dfs[each]).empty:
             del dance_dfs[each]
     return dance_dfs
 
