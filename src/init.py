@@ -1,6 +1,8 @@
 '''File to house global variables and helper methods'''
 
 # Data and partition variables, Static
+import pandas as pd
+
 df_Dnum = 0
 df_cat = 0
 df_inst = 0
@@ -10,6 +12,12 @@ df_pro = 0
 max_dance_couples = 0
 max_heats = 0
 eventName = 0
+
+# TODO DEBUG
+debug = False
+count = True
+inst = False
+check = False
 
 # Dynamic Event variables and Structures
 logString = ""
@@ -38,11 +46,12 @@ maxorder = 3
 maxsolutions = [7, 5, 5]  # Termination clauses for solving conflicts n times
 solved = [0] * maxorder
 presolved = [0] * maxorder
-solution = [0] * (maxorder+1)
+solution = [0] * (maxorder + 1)
 starting_instructors_for_heat = []
 
 # Participant sheets
-participantsheetcols = {"Day": [], "Heat #": [], "Floor": [], "Partner #": [], "Partner Name": [], "Event": [], "Syllabus":[], "Division": []}
+participantsheetcols = {"Day": [], "Heat #": [], "Floor": [], "Partner #": [], "Partner Name": [], "Event": [],
+                        "Syllabus": [], "Division": []}
 participantsheets = {}
 participantsheet_excelcols = ["A", "B", "C", "D", "E", "F", "G", "H"]
 participantsheet_exceldimensions = [9, 35, 9, 15, 18, 24, 9, 18]
@@ -51,7 +60,8 @@ participantsheet_excelalignments = ["right", "center", 'right', "right", 'center
 excelcols = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
 excelalignments = ["center", "right", 'left', "left", 'right', 'left', 'left', 'center', 'left']
 exceldimensions = [9, 15, 15, 15, 15, 18, 18, 7, 15]
-df_cols = ['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name', 'Follow Dancer #', 'Follow First Name', 'Follow Last Name', 'Level', 'School']
+df_cols = ['type id', 'Lead Dancer #', 'Lead First Name', 'Lead Last Name', 'Follow Dancer #', 'Follow First Name',
+           'Follow Last Name', 'Level', 'School']
 
 
 def getNode(dance_dfs, div):
@@ -63,8 +73,9 @@ def getNode(dance_dfs, div):
                 tmp = tmp[key]
         return tmp
     except Exception:
-        print("Node does not exist", div)
+        # print("Node does not exist", div)
         return {}
+
 
 def deleteEmpty(dance_dfs):
     keylist = list(dance_dfs.keys())
@@ -135,10 +146,12 @@ def buildInstTree(dance_dfs, inst_tree, ev):
                     #     del tmp
                     for num in data["Instructor Dancer #'s"]:  # Iterate through all #'s in instructor lists
                         if num in inst_tree[each].keys():
-                            inst_tree[each][num] += data[ev]  # Need to add this contestant's entry number for this event
+                            inst_tree[each][num] += data[
+                                ev]  # Need to add this contestant's entry number for this event
                         else:
                             inst_tree[each][num] = data[ev]  # Need to add this contestant's entry number for this event
     return inst_tree
+
 
 def buildInst2SingTree(dance_dfs, inst2sing_tree, ev):
     """Builds the dictionary tree of all instructors and thier count in that division
@@ -197,80 +210,3 @@ def instructorOperation(row):
         return [row["Instructor Dancer #'s"]]
     else:
         return [int(x) for x in row["Instructor Dancer #'s"].split(";")]
-
-
-def checkheat(heat):
-
-    for sing_room in heat.getSingles():
-        for sing in sing_room:
-            counter = 0
-            for each in heat.getSingles():
-                if sing in each:
-                    counter += 1
-                if each.count(sing) > 1:
-                    raise Exception("Multiple persons in this heat", sing, heat.getKey())
-
-
-            for each in heat.getInstructors():
-                if sing in each:
-                    counter += 1
-                if each.count(sing) > 1:
-                    raise Exception(" Multiple persons in this heat", sing, heat.getKey())
-
-
-            for each in heat.getCouples():
-                if sing in each:
-                    counter += 1
-                if each.count(sing) > 1:
-                    raise Exception(" Multiple persons in this heat", sing, heat.getKey())
-
-            if counter > 1:
-                raise Exception("Multiple Persons in this heat", sing, heat.getKey())
-
-    for inst_room in heat.getInstructors():
-        for inst in inst_room:
-            counter = 0
-
-            for each in heat.getSingles():
-                if inst in each:
-                    counter += 1
-                if each.count(inst) > 1:
-                    raise Exception(" Multiple persons in this heat", inst, heat.getKey())
-
-            for each in heat.getInstructors():
-                if inst in each:
-                    counter += 1
-                if each.count(inst) > 1:
-                    raise Exception(" Multiple persons in this heat", inst, heat.getKey())
-
-            for each in heat.getCouples():
-                if inst in each:
-                    counter += 1
-                if each.count(inst) > 1:
-                    raise Exception(" Multiple persons in this heat", inst, heat.getKey())
-
-            if counter > 1:
-                raise Exception("Multiple Persons in this heat", inst, heat.getKey())
-
-    for coup_room in heat.getCouples():
-        for coup in coup_room:
-            counter = 0
-
-            for each in heat.getSingles():
-                if coup in each:
-                    counter += 1
-                if each.count(coup) > 1:
-                    raise Exception(" Multiple persons in this heat", coup, heat.getKey())
-            for each in heat.getInstructors():
-                if coup in each:
-                    counter += 1
-                if each.count(coup) > 1:
-                    raise Exception(" Multiple persons in this heat", coup, heat.getKey())
-            for each in heat.getCouples():
-                if coup in each:
-                    counter += 1
-                if each.count(coup) > 1:
-                    raise Exception(" Multiple persons in this heat", coup, heat.getKey())
-
-            if counter > 1:
-                raise Exception("Multiple Persons in this heat", coup, heat.getKey())

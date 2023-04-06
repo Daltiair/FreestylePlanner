@@ -307,8 +307,7 @@ def clearParticipantSheetCounts():
             dancer = data.loc["Dancer #"]
             if init.participantsheets.get(dancer) is not None:  # If the entry is present
                 if init.participantsheets[dancer]["Count"] != data[init.ev]:  # If not equal to the input form
-                    print(dancer, "input entry count", init.participantsheets[dancer]["Count"],
-                          "!= output sorted count", data[init.ev], "in event", init.ev)
+                    print(dancer, "input entry count", init.participantsheets[dancer]["Count"], "!= output sorted count", data[init.ev], "in event", init.ev)
                 init.participantsheets[dancer]["Count"] = 0
                 # Drop the entry from the DF
                 # Single = Single.reset_index(drop=True)
@@ -364,21 +363,24 @@ def appendParticipantSheet(div, syllabus, ev, roomid, roster_entry, heat, heatsl
         eventlvls = heatslist.getEventLvlCouples()
         eventages = heatslist.getEventAgesCouples()
 
-    for lev in init.lvl_conversion:
-        if lev in div:
-            div[div.index(lev)] = eventlvls[lev]
-    for age in eventages:
-        if age in div:
-            printagelist = eventages.copy()
-            printagelist.insert(0, 17)
-            age_index = printagelist.index(div[div.index(age)])
-            if age_index == printagelist[-1]:  # If the last bracket make it '86+'
-                div[div.index(age)] = str(printagelist[age_index - 1] + 1) + "+"
-            else:
-                div[div.index(age)] = str(printagelist[age_index - 1] + 1) + "-" + str(printagelist[age_index])
-    printstr = ""
-    for d in div:
-        printstr = printstr + str(d) + ", "
+    if syllabus != "": #TODO for debug run
+        for lev in init.lvl_conversion:
+            if lev in div:
+                div[div.index(lev)] = eventlvls[lev]
+        for age in eventages:
+            if age in div:
+                printagelist = eventages.copy()
+                printagelist.insert(0, 17)
+                age_index = printagelist.index(div[div.index(age)])
+                if age_index == printagelist[-1]:  # If the last bracket make it '86+'
+                    div[div.index(age)] = str(printagelist[age_index - 1] + 1) + "+"
+                else:
+                    div[div.index(age)] = str(printagelist[age_index - 1] + 1) + "-" + str(printagelist[age_index])
+        printstr = ""
+        for d in div:
+            printstr = printstr + str(d) + ", "
+    else:
+        printstr = div
 
     # Set Participant df data
     dancer = roster_entry.loc[0, lead_col]

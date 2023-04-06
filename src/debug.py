@@ -5,10 +5,87 @@ from init import getNode
 from output import appendParticipantSheet
 
 
+def checkheat(heat):
+
+    for sing_room in heat.getSingles():
+        for sing in sing_room:
+            counter = 0
+            for each in heat.getSingles():
+                if sing in each:
+                    counter += 1
+                if each.count(sing) > 1:
+                    raise Exception("Multiple persons in this heat", sing, heat.getKey())
+
+
+            for each in heat.getInstructors():
+                if sing in each:
+                    counter += 1
+                if each.count(sing) > 1:
+                    raise Exception(" Multiple persons in this heat", sing, heat.getKey())
+
+
+            for each in heat.getCouples():
+                if sing in each:
+                    counter += 1
+                if each.count(sing) > 1:
+                    raise Exception(" Multiple persons in this heat", sing, heat.getKey())
+
+            if counter > 1:
+                raise Exception("Multiple Persons in this heat", sing, heat.getKey())
+
+    for inst_room in heat.getInstructors():
+        for inst in inst_room:
+            counter = 0
+
+            for each in heat.getSingles():
+                if inst in each:
+                    counter += 1
+                if each.count(inst) > 1:
+                    raise Exception(" Multiple persons in this heat", inst, heat.getKey())
+
+            for each in heat.getInstructors():
+                if inst in each:
+                    counter += 1
+                if each.count(inst) > 1:
+                    raise Exception(" Multiple persons in this heat", inst, heat.getKey())
+
+            for each in heat.getCouples():
+                if inst in each:
+                    counter += 1
+                if each.count(inst) > 1:
+                    raise Exception(" Multiple persons in this heat", inst, heat.getKey())
+
+            if counter > 1:
+                raise Exception("Multiple Persons in this heat", inst, heat.getKey())
+
+    for coup_room in heat.getCouples():
+        for coup in coup_room:
+            counter = 0
+
+            for each in heat.getSingles():
+                if coup in each:
+                    counter += 1
+                if each.count(coup) > 1:
+                    raise Exception(" Multiple persons in this heat", coup, heat.getKey())
+            for each in heat.getInstructors():
+                if coup in each:
+                    counter += 1
+                if each.count(coup) > 1:
+                    raise Exception(" Multiple persons in this heat", coup, heat.getKey())
+            for each in heat.getCouples():
+                if coup in each:
+                    counter += 1
+                if each.count(coup) > 1:
+                    raise Exception(" Multiple persons in this heat", coup, heat.getKey())
+
+            if counter > 1:
+                raise Exception("Multiple Persons in this heat", coup, heat.getKey())
+
+
 def countInstances(heat, heat_list):
     # Loop over heat list, feeding each entry to the counter dict
     # make sure the addition of the placed DB and the DF = 2 if not pause the algo
-
+    print("Counting instances")
     unsorted_data = init.df_sing[init.df_sing[init.ev] > 0]
 
     for prevheat in heat_list.getRostersList():

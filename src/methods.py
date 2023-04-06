@@ -307,107 +307,7 @@ def sliceDfs(df_sing, df_coup):
                      }
 
     return df_contestants
-''' If I go back to saving singles and couples dances in list format each index is a different level
 
-                    while init.dance_dfs_dict[iterator].empty:
-                        init.dance_dfs_dict.remove(0)
-                        df_list = dance_couples_list
-                        query_df = df_list[iterator] # new df to be selecting from 
-                    while dance_couples_list[couples_iterator].empty:
-                        dance_couples_list.remove(0)
-                        df_list = init.dance_dfs_dict
-                        query_df = df_list[iterator] # new df to be selecting from
-                        level_bp.append(dance_heat_count)
-'''
-
-
-def getContestantConflictList(dance_df, inst, contestants):
-    """Finds the all contestants that will conflict for the current heat roster given the instructor inst
-
-       Parameters
-       ----------
-       dance_df : Pandas DataFrame
-           Current pool of single contestants
-       inst : int
-           Instructor Randomly picked from list of instructors possible for the level
-       contestants : list[[int]]
-           List of 6 lists holding all contestants that are placed in current heat
-           List of 6 lists holding all contestants that are placed in current heat
-
-       Returns
-       -------
-       list[int]
-           a list of Dancer #'s that will conflict with the current heat roster
-       """
-    dupe_con = []
-    for row, singles in dance_df.iterrows():
-        # Set column variables based on single type
-        if singles["type id"] == "L":
-            contestant_col = "Lead Dancer #"
-            inst_col = "Follow Dancer #"
-            inst_fname = "Follow First Name"
-            inst_lname = "Follow Last Name"
-        elif singles["type id"] == "F":
-            contestant_col = "Follow Dancer #"
-            inst_col = "Lead Dancer #"
-            inst_fname = "Lead First Name"
-            inst_lname = "Lead Last Name"
-        else:
-            raise Exception("Type id for " + singles + " is invalid")
-        # Retrofit the instructor list data
-        # if type(singles["Instructor Dancer #'s"]) == int:
-        #     tmp = [singles["Instructor Dancer #'s"]]
-        # else:
-        #     tmp = [int(x) for x in singles["Instructor Dancer #'s"].split(";")]
-        # singles["Instructor Dancer #'s"] = tmp
-        # del tmp
-        for num in singles["Instructor Dancer #'s"]:
-            if num == inst:
-                for each in contestants:
-                    if each.count(singles[contestant_col]) > 0:
-                        dupe_con.append(each)
-    return dupe_con
-
-
-def getContestantFreeList(dance_df, inst, contestants):
-    """Finds the all contestants that are free for the current heat roster given the instructor inst
-
-       Parameters
-       ----------
-       dance_df : Pandas DataFrame
-           Current pool of single contestants
-       inst : int
-           Instructor Randomly picked from list of instructors possible for the level
-       contestants : list[[int]]
-           List of 6 lists holding all contestants that are placed in current heat
-           List of 6 lists holding all contestants that are placed in current heat
-
-       Returns
-       -------
-       list[int]
-           a list of Dancer #'s that are free with the current heat roster
-       """
-    free_con = []
-    for row, singles in dance_df.iterrows():
-        # Set column variables based on single type
-        if singles["type id"] == "L":
-            contestant_col = "Lead Dancer #"
-            inst_col = "Follow Dancer #"
-            inst_fname = "Follow First Name"
-            inst_lname = "Follow Last Name"
-        elif singles["type id"] == "F":
-            contestant_col = "Follow Dancer #"
-            inst_col = "Lead Dancer #"
-            inst_fname = "Lead First Name"
-            inst_lname = "Lead Last Name"
-        else:
-            raise Exception("Type id for " + singles + " is invalid")
-        for num in singles["Instructor Dancer #'s"]:
-            if num == inst:
-                for each in contestants:
-                    if each.count(singles[contestant_col]) == 0:
-                        free_con.append(each)
-    return free_con
 
 def deleteEmpty(dance_dfs):
     keylist = list(dance_dfs.keys())
@@ -457,12 +357,6 @@ def buildInst2SingTree(dance_dfs, inst2sing_tree, ev):
                         inst_col = "Lead Dancer #"
                         inst_fname = "Lead First Name"
                         inst_lname = "Lead Last Name"
-                    # if type(data["Instructor Dancer #'s"]) == int:
-                    #     tmp = [data["Instructor Dancer #'s"]]
-                    # else:
-                    #     tmp = [int(x) for x in data["Instructor Dancer #'s"].split(";")]
-                    # data["Instructor Dancer #'s"] = tmp
-                    # del tmp
                     for num in data["Instructor Dancer #'s"]:  # Iterate through all #'s in instructor lists
                         # singles for that instructor tree
                         if inst2sing_tree[each].get(num) is None:
@@ -475,13 +369,13 @@ def buildInst2SingTree(dance_dfs, inst2sing_tree, ev):
 
 def pickDfs(ev, dance_dfs, inst_tree, floors, div, eventages_s, eventages_c, couples_per_floor):
     print()
-    l_keys = [0, 1, 2, 3, 4, 5]
+    # l_keys = [0, 1, 2, 3, 4, 5]
 
     if div.count('T') == 0 and div.count('t') == 0:
         start = "A"
-    elif "S" in dance_dfs:
+    elif dance_dfs.get("S") is not None:
         start = "S"
-    else:
+    elif dance_dfs.get("C") is not None:
         start = "C"
 
     shell = dance_dfs[start]
@@ -533,9 +427,9 @@ def pickDfs(ev, dance_dfs, inst_tree, floors, div, eventages_s, eventages_c, cou
         #        Opposite Gender
         prio_s = [["S", opp_s, same_l, same_a], ["S", opp_s, same_l, diff_a], ["S", opp_s, diff_l, same_a],
                   ["S", opp_s, diff_l, diff_a],
-        #         Same Gender
+                  #         Same Gender
                   ["S", same_s, same_l, diff_a], ["S", same_s, diff_l, same_a], ["S", same_s, diff_l, diff_a],
-        #         Couples
+                  #         Couples
                   ["C", same_l, same_a], ["C", same_l, diff_a], ["C", diff_l, same_a], ["C", diff_l, diff_a]]
         all_poss = []  # holds all possible keys to be selected, used in the case of different level or age
         picked_keys = [picked_keys]
@@ -564,89 +458,92 @@ def pickDfs(ev, dance_dfs, inst_tree, floors, div, eventages_s, eventages_c, cou
                         poss_key.append("Lead")
                 iter += 1
             if div.count('L') != 0 or div.count('l') != 0:
-                if prio_s[prio][2] != "diff_l":
-                    poss_key.append(prio_s[prio][2])
+                # Since Couples has a different possible key
+                if poss_key[0] == "S":
+                    prio_lvl_index = 2
+                    lvlnames = init.eventlvlnames_s
+                else:
+                    prio_lvl_index = 1
+                    lvlnames = init.eventlvlnames_c
+                if prio_s[prio][prio_lvl_index] != "diff_l":
+                    poss_key.append(prio_s[prio][prio_lvl_index])
                     all_poss.append(poss_key)
                 else:  # If different level make a key with all possible levels
-                    for lev in l_keys:  # For all level keys
+                    for lev in lvlnames:  # For all level keys
                         if lev != picked_keys[0][lev_index]:  # if not the same level, create a new possible key
                             poss_key.append(lev)
                             all_poss.append(poss_key)
                             poss_key = poss_key[:-1]
                 iter += 1
             if div.count('A') != 0 or div.count('a') != 0:
+                # Since Couples has a different possible key
+                if poss_key[0] == "S":
+                    prio_age_index = 3
+                else:
+                    prio_age_index = 2
                 if len(all_poss) == 0:  # in case 'l' split is not part of this Event
                     all_poss.append(poss_key)
-                try:
-                    if prio_s[prio][3] != "diff_a":
-                        for key in all_poss:
-                            key.append(prio_s[prio][3])
-                    else:  # If different age make a key with all possible ages
-                        curr_all_poss = len(all_poss)
-                        if prio_s[prio][0] == "S":  # Make sure to give the correct age brackets based on the current possible key(s)
-                            ages_to_use = eventages_s
-                        else:
-                            ages_to_use = eventages_c
-                        agelist = ages_to_use.copy()
-                        agelist.remove(picked_keys[0][age_index])
-                        # iter = 0
-                        for age in agelist:
-                            for j in range(curr_all_poss):
-                                poss_key = all_poss[j][:]
-                                poss_key.append(age)
-                                all_poss.append(poss_key)
-                        # Remove the all_poss with no age
-                        all_poss = all_poss[curr_all_poss:]
-                except:
-                    print(prio_s, prio)
+                if prio_s[prio][prio_age_index] != "diff_a":
+                    for key in all_poss:
+                        key.append(prio_s[prio][prio_age_index])
+                else:  # If different age make a key with all possible ages
+                    curr_all_poss = len(all_poss)
+                    if prio_s[prio][0] == "S":  # Make sure to give the correct age brackets based on the current possible key(s)
+                        ages_to_use = eventages_s
+                    else:
+                        ages_to_use = eventages_c
+                    agelist = ages_to_use.copy()
+                    agelist.remove(picked_keys[0][age_index])
+                    # iter = 0
+                    for age in agelist:
+                        for j in range(curr_all_poss):
+                            poss_key = all_poss[j][:]
+                            poss_key.append(age)
+                            all_poss.append(poss_key)
+                    # Remove the all_poss with no age
+                    all_poss = all_poss[curr_all_poss:]
             # Use all_poss to find out if that combo exists in the data tree
             picked = False
             for every in all_poss:
-                for i, key in enumerate(every):
-                    if i == 0:
-                        tmp = dance_dfs[key]
-                        continue
-                    if key not in tmp:
-                        break
-                    if type(tmp[key]) is dict:
-                        tmp = tmp[key]
-                    elif every not in picked_keys:  # add to picked list only if that key combo is not in already
-                        # if added is a single
-                        if every[0] == "S":
-                            # Sanity check the levels in question
-                            unique = findUnique(inst_tree, copyList(picked_keys), every)
-                            count = findInstCount(inst_tree, every)
-                            # find # of 'singles' rooms
-                            sfloors = 0
-                            for room in picked_keys:
-                                if room[0] == "S":
-                                    sfloors += 1
-                            if every[0] == "S":
+                if getNode(inst_tree, every) == {}:  # Check if node is there
+                    if every == all_poss[-1]:  # If at the end of options for this priority bracket move to another
+                        prio += 1
+                    continue
+                if every not in picked_keys:  # add to picked list only if that key combo is not in already
+                    # if added is a single
+                    if every[0] == "S":
+                        # Sanity check the levels in question
+                        unique = findUnique(inst_tree, copyList(picked_keys), every)
+                        count = findInstCount(inst_tree, every)
+                        # find # of 'singles' rooms
+                        sfloors = 0
+                        for room in picked_keys:
+                            if room[0] == "S":
                                 sfloors += 1
-                            # if (unique >= (len(picked_keys) * couples_per_floor)-3) and (count > (couples_per_floor-2)):
-                            if unique >= (sfloors * couples_per_floor)-2:
-                                picked_keys.append(every)
-                                picked = True
-                                break
-                            else:
-                                unideal.append([every, count])
-                        else:  # if not a single
-                            count = findContestantCount(dance_dfs, every, ev)
-                            if count[0] >= couples_per_floor-2:
-                                picked_keys.append(every)
-                                picked = True
-                            else:
-                                unideal.append([every, count[1]])
-                if picked:  # If picked break
-                    picked = False
-                    prio = 1  # So I don't skip other gender prio options
-                    break
+                        sfloors += 1
+                        # if (unique >= (len(picked_keys) * couples_per_floor)-3) and (count > (couples_per_floor-2)):
+                        if unique >= (sfloors * couples_per_floor) - 2:
+                            picked_keys.append(every)
+                            picked = True
+                        else:
+                            unideal.append([every, count])
+                    else:  # if not a single
+                        count = findContestantCount(dance_dfs, every, ev)
+                        if count[0] >= couples_per_floor - 2:
+                            picked_keys.append(every)
+                            picked = True
+                        else:
+                            unideal.append([every, count[1]])
+                    if picked:  # If picked break
+                        picked = False
+                        prio = 1  # So I don't skip other gender prio options
+                        break
                 if every == all_poss[-1]:  # If at the end of options for this priority bracket move to another
                     prio += 1
             all_poss.clear()  # Once all possible keys in priority slot are not picked, clear the list
             if len(picked_keys) == floors:
                 break
-                
+
     # If picked df is a couple
     elif picked_keys[0] == "C" or picked_keys[0] == "A":
         iter = 1  # Iterator to track key index
@@ -674,9 +571,9 @@ def pickDfs(ev, dance_dfs, inst_tree, floors, div, eventages_s, eventages_c, cou
         if picked_keys[0] == "C":
             #         Couples
             prio_c = [["C", same_l, diff_a], ["C", diff_l, same_a], ["C", diff_l, diff_a],
-            #         Singles
-            #           ["S", "single", same_l, same_a], ["S", "single", same_l, diff_a], ["S", "single", diff_l, same_a],
-            #           ["S", "single", diff_l, diff_a]
+                      #         Singles
+                      #           ["S", "single", same_l, same_a], ["S", "single", same_l, diff_a], ["S", "single", diff_l, same_a],
+                      #           ["S", "single", diff_l, diff_a]
                       ]
         elif picked_keys[0] == "A":
             prio_c = [["A", same_l, diff_a], ["A", diff_l, same_a], ["A", diff_l, diff_a]]
@@ -711,7 +608,7 @@ def pickDfs(ev, dance_dfs, inst_tree, floors, div, eventages_s, eventages_c, cou
                         key.append(prio_c[prio][1])
                 else:  # If different level make a key with all possible levels
                     curr_all_poss = len(all_poss)
-                    for lev in l_keys:  # duplicate current all_poss per different level
+                    for lev in init.eventlvlnames_c:  # duplicate current all_poss per different level
                         if lev != picked_keys[0][lev_index]:
                             for j in range(curr_all_poss):
                                 poss_key = all_poss[j][:]
@@ -796,19 +693,19 @@ def pickDfs(ev, dance_dfs, inst_tree, floors, div, eventages_s, eventages_c, cou
             if len(picked_keys) == floors:
                 break
 
-        # If all possible keys are tried and not filled the floors try the unideal heats
-        while len(picked_keys) != floors:
-            if len(unideal) == 0:
-                break
-            largest = 0
-            largest_index = 0
-            for i, each in enumerate(unideal):
-                if each[1] > largest:
-                    largest = each[1]
-                    largest_index = i
-            print("Using Unideal heat", unideal[largest_index][0])
-            picked_keys.append(unideal[largest_index][0])
-            del unideal[largest_index]
+    # If all possible keys are tried and not filled the floors try the unideal heats
+    while len(picked_keys) != floors:
+        if len(unideal) == 0:
+            break
+        largest = 0
+        largest_index = 0
+        for i, each in enumerate(unideal):
+            if each[1] > largest:
+                largest = each[1]
+                largest_index = i
+        print("Using Unideal heat", unideal[largest_index][0])
+        picked_keys.append(unideal[largest_index][0])
+        del unideal[largest_index]
     if len(picked_keys) < floors:
         pass
     return picked_keys
@@ -861,7 +758,7 @@ def findContestantCount(dance_dfs, newkey, ev):
         print(newkey, "No longer in pool")
 
 
-def PoachPrevHeatsSingles(roomid, div, dance_df, heat, heatlist, acceptablecouples):
+def PoachPrevHeatsSingles(roomid, div, heat, heatlist, acceptablecouples):
     if heatlist.getDivisionHeatCount(div) == 0:
         print(div, "Not enough contestants to make a heat in", init.ev, "Recommend editing this events Division settings")
         return
@@ -884,52 +781,52 @@ def PoachPrevHeatsSingles(roomid, div, dance_df, heat, heatlist, acceptablecoupl
             # Check if heat has division
             if div not in each.getDiv():
                 continue
-            # # Find an entry in the previous heat room that has no conflicts with current heat
-            # if each.getDiv().count(div) > 1:
-            #     past_heat_iter = each.getDiv().count(div)
-            # else:
-            #     past_heat_iter = 1
-            # start_at = 0
-            # for j in range(past_heat_iter):  # Catches any heat that has multi same division floors
-            swapping_room = each.getDiv().index(div, 0)
-            if not len(each.getRoster()[swapping_room]) > acceptablecouples:
-                continue
-            start_at = swapping_room
-            index_iter = 0
-            index_2_swap = -1
-            dup = False
-            for contestant, inst in zip(each.getSingles()[swapping_room], each.getInstructors()[swapping_room]):
-                for i, singles in enumerate(heat.getSingles()):
-                    if contestant in singles:  # make sure the conflict is not because it has some inst trying to be freed
-                        dup = True
-                        break
-                for i, instructors in enumerate(heat.getInstructors()):
-                    if contestant in instructors:  # make sure the conflict is not because it has some inst trying to be freed
-                        raise Exception(contestant, "in Singles Instructor list")
-                        # conflict to check the previous heat entry nth conflict
-                        # resolverconflict = ResolverConflictItemSingle(3, conflict_div, heat_index,swapping_room, placed_inst[swapping_room].index(inst), instructors_in_heat, singles_in_heat, inst, conflict, [swapper, swappee])
-                        # resolverLog.addConflict(resolverconflict, con_num)
-                        # print("Swappee conflict in heat,room,index", heat_index, swapping_room, placed_inst[swapping_room].index(inst), 'inst', inst)
-                    if inst in instructors:
-                        dup = True
-                        break
-                for i, couples in enumerate(heat.getCouples()):
-                    if contestant in couples:
-                        dup = True
-                        break
-                if not dup:
-                    index_2_swap = index_iter
-                    # if (contestant in poachsingles) or (inst in poachinstructors):
-                    if contestant not in poachsingles and inst not in poachinst and heat_index not in heatnums:
-                        # Check this single/inst is not in the list already
-                        poachlist.append([heat_index, swapping_room, index_2_swap])
-                        heatnums.append(heat_index)
-                        poachsingles.append(contestant)
-                        poachinst.append(inst)
-                    else:
-                        potentials += 1
+            # Find an entry in the previous heat room that has no conflicts with current heat
+            if each.getDiv().count(div) > 1:
+                past_heat_iter = each.getDiv().count(div)
+            else:
+                past_heat_iter = 1
+            start_at = 0
+            for j in range(past_heat_iter):  # Catches any heat that has multi same division floors
+                swapping_room = each.getDiv().index(div, 0)
+                if not len(each.getRoster()[swapping_room]) > acceptablecouples:
+                    continue
+                start_at = swapping_room
+                index_iter = 0
+                index_2_swap = -1
                 dup = False
-                index_iter += 1
+                for contestant, inst in zip(each.getSingles()[swapping_room], each.getInstructors()[swapping_room]):
+                    for i, singles in enumerate(heat.getSingles()):
+                        if contestant in singles:  # make sure the conflict is not because it has some inst trying to be freed
+                            dup = True
+                            break
+                    for i, instructors in enumerate(heat.getInstructors()):
+                        if contestant in instructors:  # make sure the conflict is not because it has some inst trying to be freed
+                            raise Exception(contestant, "in Singles Instructor list")
+                            # conflict to check the previous heat entry nth conflict
+                            # resolverconflict = ResolverConflictItemSingle(3, conflict_div, heat_index,swapping_room, placed_inst[swapping_room].index(inst), instructors_in_heat, singles_in_heat, inst, conflict, [swapper, swappee])
+                            # resolverLog.addConflict(resolverconflict, con_num)
+                            # print("Swappee conflict in heat,room,index", heat_index, swapping_room, placed_inst[swapping_room].index(inst), 'inst', inst)
+                        if inst in instructors:
+                            dup = True
+                            break
+                    for i, couples in enumerate(heat.getCouples()):
+                        if contestant in couples:
+                            dup = True
+                            break
+                    if not dup:
+                        index_2_swap = index_iter
+                        # if (contestant in poachsingles) or (inst in poachinstructors):
+                        if contestant not in poachsingles and inst not in poachinst and heat_index not in heatnums:
+                            # Check this single/inst is not in the list already
+                            poachlist.append([heat_index, swapping_room, index_2_swap])
+                            heatnums.append(heat_index)
+                            poachsingles.append(contestant)
+                            poachinst.append(inst)
+                        else:
+                            potentials += 1
+                    dup = False
+                    index_iter += 1
         instructors_list = []
         for i, each in enumerate(heat.getInstructors()):
             for every in each:
@@ -970,76 +867,70 @@ def PoachPrevHeatsSingles(roomid, div, dance_df, heat, heatlist, acceptablecoupl
         runcounter += 1
 
 
-def PoachPrevHeatsCouples(roomid, div, dance_df, heat, heatlist, acceptablecouples):
+def PoachPrevHeatsCouples(roomid, div, heat, heatlist, acceptablecouples):
     if heatlist.getDivisionHeatCount(div) == 0:
         print(div, "Not enough contestants to make a heat in", init.ev, "Recommend editing this event's Division settings")
         return
     couples_per_floor = heatlist.getCouplesPerFloor()
     heatlen = len(heat.getRoster()[roomid])
     poachlist = []
-    # poachcouples = []
+    poachcouples = []
+    runcounter = 0
     # While current heat's selection room is less than half the size of a full room
-    for heat_index, each in enumerate(heatlist.getRostersList()):
-        # Check if heat has division
-        if div not in each.getDiv():
-            continue
-        # Find an entry in the previous heat room that has no conflicts with current heat
-        if each.getDiv().count(div) > 1:
-            past_heat_iter = each.getDiv().count(div)
-        else:
-            past_heat_iter = 1
-        start_at = 0
-
-        swapping_room = each.getDiv().index(div, start_at)
-        start_at = swapping_room
-        index_iter = 0
-        index_2_swap = -1
-        lookin = each.getCouples()[swapping_room]
-        dup = False
-        for contestant in lookin:
-            for i, singles in enumerate(heat.getSingles()):
-                if contestant in singles:  # make sure the conflict is not because it has some inst trying to be freed
-                    dup = True
-                    break
-            for i, instructors in enumerate(heat.getInstructors()):
-                if contestant in instructors:  # make sure the conflict is not because it has some inst trying to be freed
-                    raise Exception("Couples Conflict Contestant", contestant, "in Singles Instructor list")
-                    # conflict to check the previous heat entry nth conflict
-                    # resolverconflict = ResolverConflictItemSingle(3, conflict_div, heat_index,swapping_room, placed_inst[swapping_room].index(inst), instructors_in_heat, singles_in_heat, inst, conflict, [swapper, swappee])
-                    # resolverLog.addConflict(resolverconflict, con_num)
-                    # print("Swappee conflict in heat,room,index", heat_index, swapping_room, placed_inst[swapping_room].index(inst), 'inst', inst)
-            for i, couples in enumerate(heat.getCouples()):
-                if contestant in couples:
-                    dup = True
-                    break
-            # if no conflicts with both lead and follow, make the swap with entry index i
-            if math.fmod(index_iter, 2) == 1:
-                if not dup:
-                    index_2_swap = int((index_iter-1) / 2)
-                    f = contestant
-                    if [heat_index, swapping_room, index_2_swap] not in poachlist: # and (l not in poachcouples) and (f not in poachcouples): # Check this couple is not in the list already
-                        poachlist.append([heat_index, swapping_room, index_2_swap])
-                        # poachcouples.append(l)
-                        # poachcouples.append(f)
-                dup = False
+    while heatlen < acceptablecouples:
+        if runcounter > 5:  # If poacher runs for 15 iterations and no fill then break out
+            print("forcing out poaching", div)
+            break
+        print("Gather entries to Poach", div)
+        # While current heat's selection room is less than half the size of a full room
+        for heat_index, each in enumerate(heatlist.getRostersList()):
+            # Check if heat has division
+            if div not in each.getDiv():
+                continue
+            # Find an entry in the previous heat room that has no conflicts with current heat
+            if each.getDiv().count(div) > 1:
+                past_heat_iter = each.getDiv().count(div)
             else:
-                if not dup:
-                    l = contestant
-            index_iter += 1
+                past_heat_iter = 1
+            start_at = 0
+            for j in range(past_heat_iter):  # Catches any heat that has multi same division floors
+                swapping_room = each.getDiv().index(div, start_at)
+                start_at = swapping_room
+                index_iter = 0
+                index_2_swap = -1
+                lookin = each.getCouples()[swapping_room]
+                dup = False
+                for contestant in lookin:
+                    for i, singles in enumerate(heat.getSingles()):
+                        if contestant in singles:  # make sure the conflict is not because it has some inst trying to be freed
+                            dup = True
+                            break
+                    for i, instructors in enumerate(heat.getInstructors()):
+                        if contestant in instructors:  # make sure the conflict is not because it has some inst trying to be freed
+                            raise Exception("Couples Conflict Contestant", contestant, "in Singles Instructor list")
+                            # conflict to check the previous heat entry nth conflict
+                            # resolverconflict = ResolverConflictItemSingle(3, conflict_div, heat_index,swapping_room, placed_inst[swapping_room].index(inst), instructors_in_heat, singles_in_heat, inst, conflict, [swapper, swappee])
+                            # resolverLog.addConflict(resolverconflict, con_num)
+                            # print("Swappee conflict in heat,room,index", heat_index, swapping_room, placed_inst[swapping_room].index(inst), 'inst', inst)
+                    for i, couples in enumerate(heat.getCouples()):
+                        if contestant in couples:
+                            dup = True
+                            break
+                    # if no conflicts with both lead and follow, make the swap with entry index i
+                    if math.fmod(index_iter, 2) == 1:
+                        if not dup:
+                            index_2_swap = int((index_iter-1) / 2)
+                            f = contestant
+                            if (l not in poachcouples) and (f not in poachcouples): # Check this couple is not in the list already
+                                poachlist.append([heat_index, swapping_room, index_2_swap])
+                                poachcouples.append(l)
+                                poachcouples.append(f)
+                        dup = False
+                    else:
+                        if not dup:
+                            l = contestant
+                    index_iter += 1
 
-    if (len(poachlist) + len(heat.getCouples()[roomid])) < acceptablecouples or heatlist.getDivisionHoleCount(div) >= heatlen:
-        backfill_df = pd.DataFrame()
-        for contestant in reversed(heat.getCouples()[roomid]):
-            index = len(heat.getCouples()[roomid])-1
-            tmp = heat.stealEntry(roomid, index)
-            backfill_df = pd.concat([backfill_df, tmp])
-            # dance_df = pd.concat([dance_df, tmp])
-        print("Backfilling", div)
-        result = backfill(backfill_df, div, heatlist, couples_per_floor, init.ev)
-        if result == -1:  # If backfill failed put entries back into the room
-            for row, data in backfill_df.iterrows():
-                heat.addEntry(data, roomid)
-    else:
         couples_list = []
         for i, each in enumerate(heat.getCouples()):
             for every in each:
@@ -1062,13 +953,18 @@ def PoachPrevHeatsCouples(roomid, div, dance_df, heat, heatlist, acceptablecoupl
                     tmp = heat2poach.stealEntry(poach[1], poach[2])
                     heat.addEntry(tmp, roomid)
                     heatlen += 1
+                    couples_list.append(heat.getCouples()[roomid][-2])
+                    couples_list.append(heat.getCouples()[roomid][-1])
                 elif counter >= 1 and len(heat2poach.getRoster()[poach[1]]) >= acceptablecouples:
                     # Check if either are in Heat already
                     print("Contestant", heat2poach.getCouples()[poach[1]][poach[2]], "stolen from heat, room",poach[0], poach[1])
                     tmp = heat2poach.stealEntry(poach[1], poach[2])
                     heat.addEntry(tmp, roomid)
                     heatlen += 1
+                    couples_list.append(heat.getCouples()[roomid][-2])
+                    couples_list.append(heat.getCouples()[roomid][-1])
             counter += 1
+        runcounter += 1
 
 
 def backfill(dance_df, div, heat_list, couples_per_floor, ev):
@@ -1193,10 +1089,10 @@ def backfill(dance_df, div, heat_list, couples_per_floor, ev):
                     break
         backfill_df = backfill_df[backfill_df.loc[:, ev] != 0]
 
-    dance_df = backfill_df
-
     if not backfill_df[backfill_df.loc[:, ev] < 0].empty:
         pass
+
+    updateDanceDfs(init.dance_dfs, backfill_df, div, div)
     return
 
 
