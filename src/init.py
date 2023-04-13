@@ -18,6 +18,8 @@ debug = False
 count = True
 inst = False
 check = False
+singles_only = False
+couples_only = False
 
 # Dynamic Event variables and Structures
 logString = ""
@@ -26,6 +28,10 @@ dance_dfs = 0
 inst_tree = 0
 inst2sing_tree = 0
 test_dict = {}
+SingleBaseCols = ["Dancer #", "First Name", "Last Name", "Age", "Lead/Follow", "Level", "Instructor Dancer #'s", "School"]
+CoupleBaseCols = ["Lead Dancer #", "Lead First Name", "Lead Last Name", "Lead Age",
+                  "Follow Dancer #", "Follow First Name", "Follow Last Name", "Follow Age",
+                  "Level", "School"]
 age_bnames = ["A", "A1", "B", "B1", "C", "C1", "D"]
 lvls = ["AB", "FB", "AS", "FS", 'AG', "FG"]
 lvl_conversion = [0, 1, 2, 3, 4, 5]

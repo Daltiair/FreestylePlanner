@@ -98,7 +98,7 @@ class Heat:
 
     def stealEntry(self, roomid, roster_index):
         tmp = self.roster[roomid][roster_index]
-        print(tmp['Lead Dancer #'][0], tmp["Follow Dancer #"][0])
+        # print("Stealing", tmp['Lead Dancer #'][0], tmp["Follow Dancer #"][0])
         del self.roster[roomid][roster_index]
         self.holes[roomid] += 1
         if tmp.loc[0, "type id"] == "L":
@@ -110,6 +110,7 @@ class Heat:
         elif tmp.loc[0, "type id"] == "C":
             self.couples[roomid].remove(tmp.loc[:, "Follow Dancer #"][0])
             self.couples[roomid].remove(tmp.loc[:, "Lead Dancer #"][0])
+        # print(len(self.roster))
         return tmp
 
     def calculateHoles(self, couples_per_floor):
@@ -343,9 +344,10 @@ class ConflictLog:
 
     def addConflict(self, conflict, roomid):
         dup = False
-        # if instructor is not in the list
-        if conflict.getInstructor() not in self.roomlog[roomid]["inst_list"]:
-            self.roomlog[roomid]["inst_list"].append(conflict.getInstructor())
+        if conflict.getType() == "S":
+            # if instructor is not in the list
+            if conflict.getInstructor() not in self.roomlog[roomid]["inst_list"]:
+                self.roomlog[roomid]["inst_list"].append(conflict.getInstructor())
         for i, each in enumerate(self.roomlog[roomid]["conf_list"]):
             if conflict.getType() == "S":
                 if each.getCode() == conflict.getCode():
@@ -474,6 +476,14 @@ class ResolverConflictLog:
             self.roomlog['div'].append(conflict.getDiv())
             self.roomlog["nminus"].append(con_num)
             self.roomlog["print_index"].append(nconflict_counter)
+
+        if conflict.getType() == "C":
+            self.roomlog["conf_list"].append(conflict)
+            self.roomlog['roomid'].append(conflict.getNConflictRoom())
+            self.roomlog['heat_index'].append(conflict.getHeatIndex())
+            self.roomlog['div'].append(conflict.getDiv())
+            self.roomlog["nminus"].append(con_num)
+            self.roomlog["print_index"].append(nconflict_counter)
         # for i, each in enumerate(self.roomlog["conf_list"]):
         #     if conflict.getType() == "S":
         #         if each.getCode() == conflict.getCode():
@@ -594,9 +604,9 @@ class ResolverConflictItemCouple:
         return self.getSingles
 
     def getCouples(self):
-        return self.contestants
+        return self.couples
 
-    def getConflictNumber(self):
+    def getConflictNums(self):
         return self.conflict_nums
 
     def getAux(self):

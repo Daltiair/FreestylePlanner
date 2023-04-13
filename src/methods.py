@@ -51,11 +51,7 @@ def run():
 
 '''
 def partitionData():
-    # Define base column lengths
-    baseSingleCols = 8
-    baseCoupleCols = 10
-    baseInstructorCols = 4
-    baseSettingsRows = 8
+
     """
     # DF's to make debugging faster
     data_set = {'Event Days'
@@ -190,30 +186,25 @@ def partitionData():
 
     # Stops pandas from reading useless blank columns
     cols = []
-    for i in range(len(dancelist)+baseSingleCols):
+    for i in range(len(dancelist)+len(init.SingleBaseCols)):
         cols.append(i)
+    # cols = init.SingleBaseCols.copy()
+    # cols.extend(dancelist)
 
     init.df_sing = pd.read_excel(file, sheet_name='Singles', usecols=cols)
+    # init.df_sing = pd.read_excel(file, sheet_name='Singles')
     init.df_sing['type id'] = ''
     init.df_sing["Dancer #"] = init.df_sing['Dancer #'].astype(int)
     init.df_sing["Age"] = init.df_sing['Age'].astype(int)
     init.df_sing["Instructor Dancer #'s"] = init.df_sing.apply(instructorOperation, axis=1)
-        # # Retrofit the instructor list data
-        # if type(entry["Instructor Dancer #'s"]) == int:
-        #     tmp = [entry["Instructor Dancer #'s"]]
-        # else:
-        #     tmp = [int(x) for x in entry["Instructor Dancer #'s"].split(";")]
-        # entry["Instructor Dancer #'s"] = tmp
-        # del tmp
 
     # Stops pandas from reading useless blank columns
     cols = []
-    for i in range(len(dancelist) + baseCoupleCols):
+    for i in range(len(dancelist) + len(init.CoupleBaseCols)):
         cols.append(i)
-    # df = pd.DataFrame
-    # hello = {"Hello": df}
-    # deleteEmpty(hello)
-    # print(len(hello))
+    # cols = init.CoupleBaseCols.copy()
+    # cols.extend(dancelist)
+
     init.df_coup = pd.read_excel(file, sheet_name='Couples', usecols=cols)
     init.df_coup["Lead Dancer #"] = init.df_coup['Lead Dancer #'].astype(int)
     init.df_coup["Follow Dancer #"] = init.df_coup['Follow Dancer #'].astype(int)
@@ -760,7 +751,7 @@ def findContestantCount(dance_dfs, newkey, ev):
 
 def PoachPrevHeatsSingles(roomid, div, heat, heatlist, acceptablecouples):
     if heatlist.getDivisionHeatCount(div) == 0:
-        print(div, "Not enough contestants to make a heat in", init.ev, "Recommend editing this events Division settings")
+        print(div, "Not enough contestants to make a heat in", init.ev, "Recommend editing this event's settings")
         return
     heatlen = len(heat.getRoster()[roomid])
     couples_per_floor = heatlist.getCouplesPerFloor()
@@ -773,6 +764,7 @@ def PoachPrevHeatsSingles(roomid, div, heat, heatlist, acceptablecouples):
     runcounter = 0
     # While current heat's selection room is less than half the size of a full room
     while heatlen < acceptablecouples:
+        heatnums.clear()
         if runcounter > 5:  # If poacher runs for 15 iterations and no fill then break out
             print("forcing out poaching", div)
             break
@@ -869,15 +861,17 @@ def PoachPrevHeatsSingles(roomid, div, heat, heatlist, acceptablecouples):
 
 def PoachPrevHeatsCouples(roomid, div, heat, heatlist, acceptablecouples):
     if heatlist.getDivisionHeatCount(div) == 0:
-        print(div, "Not enough contestants to make a heat in", init.ev, "Recommend editing this event's Division settings")
+        print(div, "Not enough contestants to make a heat in", init.ev, "Recommend editing this event's settings")
         return
     couples_per_floor = heatlist.getCouplesPerFloor()
     heatlen = len(heat.getRoster()[roomid])
     poachlist = []
     poachcouples = []
     runcounter = 0
+    heatnums = []
     # While current heat's selection room is less than half the size of a full room
     while heatlen < acceptablecouples:
+        heatnums.clear()
         if runcounter > 5:  # If poacher runs for 15 iterations and no fill then break out
             print("forcing out poaching", div)
             break
@@ -921,10 +915,11 @@ def PoachPrevHeatsCouples(roomid, div, heat, heatlist, acceptablecouples):
                         if not dup:
                             index_2_swap = int((index_iter-1) / 2)
                             f = contestant
-                            if (l not in poachcouples) and (f not in poachcouples): # Check this couple is not in the list already
+                            if (l not in poachcouples) and (f not in poachcouples) and heat_index not in heatnums: # Check this couple is not in the list already
                                 poachlist.append([heat_index, swapping_room, index_2_swap])
                                 poachcouples.append(l)
                                 poachcouples.append(f)
+                                heatnums.append(heat_index)
                         dup = False
                     else:
                         if not dup:
@@ -938,7 +933,7 @@ def PoachPrevHeatsCouples(roomid, div, heat, heatlist, acceptablecouples):
         print("Poaching from heats", div, poachlist)
         counter = 0
         while counter < 2:
-            for poach in poachlist:
+            for poach in reversed(poachlist):
                 if heatlen == acceptablecouples:
                     return
                 # poach = random.choice(poachlist)
@@ -1082,7 +1077,7 @@ def backfill(dance_df, div, heat_list, couples_per_floor, ev):
                     print("Candidate", candidate.loc[0, contestant_col], "Backfilled to", list_index, div,)
                     heats[list_index].addEntry(candidate, roomid)
                     # Remove the placed candidate from the df, or -1 if multi-entry
-                    dance_df.loc[dance_df.loc[:, contestant_col] == candidate.loc[0, contestant_col], ev] = candidate.loc[0, ev] - 1
+                    backfill_df.loc[backfill_df.loc[:, contestant_col] == candidate.loc[0, contestant_col], ev] = candidate.loc[0, ev] - 1
                     break
                 list_index += 1
                 if not found:
@@ -1090,7 +1085,7 @@ def backfill(dance_df, div, heat_list, couples_per_floor, ev):
         backfill_df = backfill_df[backfill_df.loc[:, ev] != 0]
 
     if not backfill_df[backfill_df.loc[:, ev] < 0].empty:
-        pass
+        raise Exception("Negatyive values in df", div)
 
     updateDanceDfs(init.dance_dfs, backfill_df, div, div)
     return
@@ -1199,7 +1194,7 @@ def setupSinglesEvent(eventrow, contestant_data):
                 for i, age in enumerate(init.eventages_s):
                     # SLice so that it is inside age bracket
                     if i == 0:  # Set bounds of age bracket
-                        lower = 18
+                        lower = 1
                         upper = age
                     else:
                         lower = init.eventages_s[i - 1] + 1
@@ -1230,7 +1225,7 @@ def setupSinglesEvent(eventrow, contestant_data):
                 for i, age in enumerate(init.eventages_s):
                     # SLice Couple so that it is inside age bracket
                     if i == 0:  # Set bounds of age bracket
-                        lower = 18
+                        lower = 1
                         upper = age
                     else:
                         lower = init.eventages_s[i - 1] + 1
@@ -1405,7 +1400,7 @@ def setupCouplesEvent(eventrow, contestant_data):
             for i, age in enumerate(init.eventages_c):
                 # Slice Couple so that it is inside age bracket
                 if i == 0:  # Set bounds of age bracket
-                    lower = 18
+                    lower = 1
                     upper = age
                 else:
                     lower = init.eventages_c[i - 1] + 1
