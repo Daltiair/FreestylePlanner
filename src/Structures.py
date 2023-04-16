@@ -42,18 +42,28 @@ class Heat:
         return self.couples
 
     def addEntry(self, entry, roomid):
+
         # Append to the roster[roomid]
         self.roster[roomid].append(entry)
         #  Check the type and add to respective list
         if entry.loc[0, "type id"] == "L":
             self.singles[roomid].append(entry.loc[:, "Lead Dancer #"][0])
             self.instructors[roomid].append(entry.loc[:, "Follow Dancer #"][0])
+            if self.div[roomid][0] == "A":  # If an all type room, add the -1 to note this index is takeb
+                self.couples[roomid].append(-1)
+                self.couples[roomid].append(-1)
         elif entry.loc[0, "type id"] == "F":
             self.singles[roomid].append(entry.loc[:, "Follow Dancer #"][0])
             self.instructors[roomid].append(entry.loc[:, "Lead Dancer #"][0])
+            if self.div[roomid][0] == "A":  # If and all type room, add the-1 to note this index is taken
+                self.couples[roomid].append(-1)
+                self.couples[roomid].append(-1)
         elif entry.loc[0, "type id"] == "C":
             self.couples[roomid].append(entry.loc[:, "Lead Dancer #"][0])
             self.couples[roomid].append(entry.loc[:, "Follow Dancer #"][0])
+            if self.div[roomid][0] == "A":  # If and all type room, add the-1 to note this index is taken
+                self.singles[roomid].append(-1)
+                self.instructors[roomid].append(-1)
         # Subtract from the holes[roomid]
         # self.holes[roomid] -= 1
 
@@ -104,12 +114,22 @@ class Heat:
         if tmp.loc[0, "type id"] == "L":
             self.singles[roomid].remove(tmp.loc[:, "Lead Dancer #"][0])
             self.instructors[roomid].remove(tmp.loc[:, "Follow Dancer #"][0])
+            if self.div[roomid][0] == "A":  # If and all type room, remove the -1
+                del self.couples[roomid][roster_index*2]  # Remove Lead -1
+                del self.couples[roomid][roster_index*2+1]  # Remove Follow -1
+                self.couples[roomid].append(-1)
         elif tmp.loc[0, "type id"] == "F":
             self.singles[roomid].remove(tmp.loc[:, "Follow Dancer #"][0])
             self.instructors[roomid].remove(tmp.loc[:, "Lead Dancer #"][0])
+            if self.div[roomid][0] == "A":  # If and all type room, remove the -1 noting this index was taken
+                del self.couples[roomid][roster_index*2]  # Remove Lead -1
+                del self.couples[roomid][roster_index*2+1]  # Remove Follow -1
         elif tmp.loc[0, "type id"] == "C":
             self.couples[roomid].remove(tmp.loc[:, "Follow Dancer #"][0])
             self.couples[roomid].remove(tmp.loc[:, "Lead Dancer #"][0])
+            if self.div[roomid][0] == "A":  # If and all type room, remove the -1
+                del self.singles[roomid][roster_index]  # Remove Lead -1
+                del self.instructors[roomid][roster_index]  # Remove Follow -1
         # print(len(self.roster))
         return tmp
 
@@ -212,6 +232,7 @@ class HeatList:
             self.divcounts[index] += 1
             self.hole_count[index] += heat.getHoles()[i]
 
+
 class ConflictItemSingle:
     # def __init__(self, code=0, contestants=[], inst=000, loc='n'):
     def __init__(self, code=0, inst=000):
@@ -309,6 +330,7 @@ class ResolverConflictItemSingle:
     def updateContestants(self, contestants):
         self.contestants = contestants
 
+
 class ConflictLog:
 
     def __init__(self, div=[]):
@@ -331,7 +353,6 @@ class ConflictLog:
             # self.roomlog[roomid]["mode_code"] = 0
             # # self.roomlog[roomid]["mode_loc"] = 0
             # self.roomlog[roomid]["codeCount"] = [0, 0]  # Code 1 Count, Codde 2 Count
-
 
     def getRoomlog(self):
         return self.roomlog
@@ -391,6 +412,9 @@ class ConflictLog:
             for each in self.roomlog:
                 index = len(self.roomlog[each]["conf_list"]) - 1
                 while index >= 0:  # reversed(self.roomlog[each]["conf_list"]):
+                    if self.roomlog[each]["conf_list"][index].getType() != "S":  # If this is a single conflict, move to next index
+                        index -= 1
+                        continue
                     if self.roomlog[each]["conf_list"][index].getInstructor() == inst:
                         # Remove from total
                         self.roomlog[each]["total"] -= self.roomlog[each]["conf_count"][index]
@@ -406,6 +430,9 @@ class ConflictLog:
             for each in self.roomlog:
                 index = len(self.roomlog[each]["conf_list"]) - 1
                 while index >= 0:
+                    if self.roomlog[each]["conf_list"][index].getType() != "C":  # If this is a single conflict, move to next index
+                        index -= 1
+                        continue
                     if self.roomlog[each]["conf_list"][index].getLead() == contestants[0] and self.roomlog[each]["conf_list"][index].getFollow() == contestants[1]:
                         # Remove from total
                         self.roomlog[each]["total"] -= self.roomlog[each]["conf_count"][index]

@@ -20,7 +20,7 @@ def selectionCouples(heat, heat_list, singles_index, c_floors, cfin_rooms, instr
         # If room finished
         if cfin_rooms[roomid] > 0:
             continue
-        print('Selecting for room', roomid, room_info)
+        print('Selecting for room', roomid + singles_index, room_info)
         dance_df = getNode(init.dance_dfs, room_info)
         consecutive = 0  # Stops infinite looping continual failed attempts to add candidate to the heat
         # Get suitable candidates from the df of the current division
@@ -32,7 +32,6 @@ def selectionCouples(heat, heat_list, singles_index, c_floors, cfin_rooms, instr
             dup_coup = False
             number = candidate.loc[0, 'Lead Dancer #']
             fnumber = candidate.loc[0, 'Follow Dancer #']
-            # TODO copy this section to 'A' as well
             # Check contestants in heat
             for selection in singles_in_heat:
                 if dup_sing:
@@ -74,31 +73,6 @@ def selectionCouples(heat, heat_list, singles_index, c_floors, cfin_rooms, instr
                     log.addConflict(conflict, roomid + singles_index)
                 if dup_inst:
                     raise Exception("Couple in Instructor list", number, fnumber)
-            # # Check if instructor inside heat, only for Singles
-            # if candidate.loc[:, 'type id'][0] != "C":  # if not a couple entry
-            #     # Set which column will be used based on Leader or Follower single
-            #     if candidate.loc[:, 'type id'][0] == 'F':
-            #         inst_col = 'Lead Dancer #'
-            #     else:
-            #         inst_col = 'Follow Dancer #'
-            #
-            #     potential_instructors = candidate[inst_col].tolist()[0]
-            #     # loop through potential_instructors list,
-            #     # if not in heat already, keep the list in case of a later swap
-            #     # add to heat roster and instructors_in_heat
-            #     for inst in potential_instructors:
-            #         found = False
-            #
-            #         for lev in instructors_in_heat:
-            #         for lev in instructors_in_heat:
-            #             if lev.count(inst) != 0:
-            #                 found = True
-            #                 break
-            #         if not found:
-            #             instructors_in_heat[roomlvl].append(inst)
-            #             added = True
-            #             break
-            # instructors_in_heat[roomlvl].append(-1)
             else:  # Else = there are no conflicts
                 # if candidate possible add to the roster, remove that entry from the pool
                 heat.addEntry(candidate, roomid + singles_index)
@@ -126,7 +100,7 @@ def selectionCouples(heat, heat_list, singles_index, c_floors, cfin_rooms, instr
                     deleteEmpty(init.dance_dfs)  # Clean up parent levels if needed
             # Resolve Conflicts
             if consecutive > init.max_conflicts:
-                resolve = resolveConflictCouples(roomid, log, heat, heat_list, instructors_available_for_heat, init.ev)
+                resolve = resolveConflictCouples(roomid+singles_index, log, heat, heat_list, instructors_available_for_heat, init.ev)
                 dance_df = getNode(init.dance_dfs, room_info)
                 if init.debug:
                     countInstances(heat, heat_list)

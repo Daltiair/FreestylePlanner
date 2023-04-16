@@ -6,10 +6,11 @@ import os
 import openpyxl
 import init
 from output_methods import createParticipantSheets, appendParticipantSheet, clearParticipantSheetCounts
+import shutil
 
 
 def buildEvent(heats, eventName):
-    createParticipantSheets()
+    # createParticipantSheets()
     rowindex = 1
     # file = os.getcwd() + eventName + '.xlsx'
     print()
@@ -202,7 +203,7 @@ def buildEvent(heats, eventName):
                     # Color code the type of contestant
                     idcol = init.excelcols[0]
                     if sheet["A" + str(index)].value == None:
-                        sheet[idcol+str(index)].fill = PatternFill("solid", start_color="f50031")
+                        sheet[idcol+str(index)].fill = PatternFill("solid", start_color="0a0a0a")
                     if sheet[idcol+str(index)].value == "L":
                         sheet[idcol+str(index)].fill = PatternFill("solid", start_color="a2c2f5")
                     elif sheet[idcol+str(index)].value == "F":
@@ -266,6 +267,14 @@ def buildEvent(heats, eventName):
         wb.save(filepath + excelfile)
         with ExcelWriter(filepath + excelfile, mode='a', if_sheet_exists="overlay") as writer:
             df.to_excel(writer, sheet_name='Sheet', startrow=1, index=False)
+    createZip()
+
+
+def createZip():
+    print("Creating zip file")
+    zipfile = init.eventName
+    outputfilepath = os.getcwd().replace('\src', "") + "/Output"
+    shutil.make_archive(zipfile, 'zip', outputfilepath)
 
 
 def makeHeatDict(genrelist, df_cat):

@@ -496,13 +496,13 @@ def pickDfs(ev, dance_dfs, inst_tree, floors, div, eventages_s, eventages_c, cou
             # Use all_poss to find out if that combo exists in the data tree
             picked = False
             for every in all_poss:
-                if getNode(inst_tree, every) == {}:  # Check if node is there
-                    if every == all_poss[-1]:  # If at the end of options for this priority bracket move to another
-                        prio += 1
-                    continue
                 if every not in picked_keys:  # add to picked list only if that key combo is not in already
                     # if added is a single
                     if every[0] == "S":
+                        if getNode(inst_tree, every) == {}:  # Check if node is there
+                            if every == all_poss[-1]:  # If at the end of options for this priority bracket move to another
+                                prio += 1
+                            continue
                         # Sanity check the levels in question
                         unique = findUnique(inst_tree, copyList(picked_keys), every)
                         count = findInstCount(inst_tree, every)
@@ -573,7 +573,6 @@ def pickDfs(ev, dance_dfs, inst_tree, floors, div, eventages_s, eventages_c, cou
         picked_keys = [picked_keys]
         prio = 0
         while prio < len(prio_c):
-
             poss_key = []
             iter = 1
             if dance_dfs.get(prio_c[prio][0]) is None:
@@ -645,11 +644,8 @@ def pickDfs(ev, dance_dfs, inst_tree, floors, div, eventages_s, eventages_c, cou
                     elif every not in picked_keys:  # add to picked list only if that key combo is not in already
                         # if added is a single
                         if every[0] == "S":
-                            cop = []
-                            for key in picked_keys:
-                                cop.append(key[:])
                             # Sanity check the levels in question
-                            unique = findUnique(inst_tree, cop, every)
+                            unique = findUnique(inst_tree, copyList(picked_keys), every)
                             count = findInstCount(inst_tree, every)
                             # find # of 'singles' rooms
                             sfloors = 0
@@ -869,9 +865,11 @@ def PoachPrevHeatsCouples(roomid, div, heat, heatlist, acceptablecouples):
     poachcouples = []
     runcounter = 0
     heatnums = []
+    pastpoach = []
     # While current heat's selection room is less than half the size of a full room
     while heatlen < acceptablecouples:
         heatnums.clear()
+        poachlist.clear()
         if runcounter > 5:  # If poacher runs for 15 iterations and no fill then break out
             print("forcing out poaching", div)
             break
@@ -913,13 +911,14 @@ def PoachPrevHeatsCouples(roomid, div, heat, heatlist, acceptablecouples):
                     # if no conflicts with both lead and follow, make the swap with entry index i
                     if math.fmod(index_iter, 2) == 1:
                         if not dup:
-                            index_2_swap = int((index_iter-1) / 2)
+                            index_2_swap = int(index_iter-1)
                             f = contestant
                             if (l not in poachcouples) and (f not in poachcouples) and heat_index not in heatnums: # Check this couple is not in the list already
-                                poachlist.append([heat_index, swapping_room, index_2_swap])
-                                poachcouples.append(l)
-                                poachcouples.append(f)
-                                heatnums.append(heat_index)
+                                if [heat_index, swapping_room, index_2_swap] not in pastpoach:
+                                    poachlist.append([heat_index, swapping_room, index_2_swap])
+                                    poachcouples.append(l)
+                                    poachcouples.append(f)
+                                    heatnums.append(heat_index)
                         dup = False
                     else:
                         if not dup:
@@ -944,23 +943,29 @@ def PoachPrevHeatsCouples(roomid, div, heat, heatlist, acceptablecouples):
                 if heat2poach.getCouples()[poach[1]][poach[2] + 1] in couples_list:
                     continue
                 if len(heat2poach.getRoster()[poach[1]]) >= couples_per_floor and counter == 0:
-                    print("Contestant", heat2poach.getCouples()[poach[1]][poach[2]], "stolen from heat, room", poach[0], poach[1])
-                    tmp = heat2poach.stealEntry(poach[1], poach[2])
+                    print("Contestants", heat2poach.getCouples()[poach[1]][poach[2]], heat2poach.getCouples()[poach[1]][poach[2]+1], "stolen from heat, room", poach[0], poach[1])
+                    tmp = heat2poach.stealEntry(poach[1], int(poach[2]/2))
                     heat.addEntry(tmp, roomid)
                     heatlen += 1
+                    print(heat.getCouples()[roomid][-2], heat.getCouples()[roomid][-1])
                     couples_list.append(heat.getCouples()[roomid][-2])
                     couples_list.append(heat.getCouples()[roomid][-1])
                 elif counter >= 1 and len(heat2poach.getRoster()[poach[1]]) >= acceptablecouples:
                     # Check if either are in Heat already
-                    print("Contestant", heat2poach.getCouples()[poach[1]][poach[2]], "stolen from heat, room",poach[0], poach[1])
-                    tmp = heat2poach.stealEntry(poach[1], poach[2])
+                    print("Contestants", heat2poach.getCouples()[poach[1]][poach[2]], heat2poach.getCouples()[poach[1]][poach[2]+1], "stolen from heat, room", poach[0], poach[1])
+                    tmp = heat2poach.stealEntry(poach[1], int(poach[2]/2))
                     heat.addEntry(tmp, roomid)
                     heatlen += 1
+                    print(heat.getCouples()[roomid][-2], heat.getCouples()[roomid][-1])
                     couples_list.append(heat.getCouples()[roomid][-2])
                     couples_list.append(heat.getCouples()[roomid][-1])
             counter += 1
+        pastpoach.extend(poachlist)
         runcounter += 1
 
+
+def PoachPrevHeatsAll(roomid, div, heat, heatlist, acceptablecouples):
+    pass
 
 def backfill(dance_df, div, heat_list, couples_per_floor, ev):
     # Todo: while df has entries
@@ -1158,7 +1163,7 @@ def setupSinglesEvent(eventrow, contestant_data):
                 if entry[0] in lasts:
                     tmp = entry[0]
                     entry[0] = firsts[lasts.index(entry[0])] + "-" + entry[0]
-                    del firsts[lasts.index(tmp)]
+                    # del firsts[lasts.index(tmp)]
                 init.eventlvlnames_s.append(entry[0])
         for i, entry in enumerate(lvlcombos_s):
             if entry != []:
@@ -1328,8 +1333,7 @@ def setupCouplesEvent(eventrow, contestant_data):
                 first = last
                 last = first
             if first > len(init.age_brackets) or last > len(init.age_brackets):
-                raise Exception("Combine Age Brackets for", init.ev, "has a number outside",
-                                "1-" + str(len(init.age_brackets)))
+                raise Exception("Combine Age Brackets for", init.ev, "has a number outside", "1-" + str(len(init.age_brackets)))
             for j in range(last - first):
                 eventage[first + j - 1].clear()
         for entry in eventage:
@@ -1378,7 +1382,7 @@ def setupCouplesEvent(eventrow, contestant_data):
                 if entry[0] in lasts:
                     tmp = entry[0]
                     entry[0] = firsts[lasts.index(entry[0])] + "-" + entry[0]
-                    del firsts[lasts.index(tmp)]
+                    # del firsts[lasts.index(tmp)]
                 init.eventlvlnames_c.append(entry[0])
         for i, entry in enumerate(lvlcombos_c):
             if entry != []:

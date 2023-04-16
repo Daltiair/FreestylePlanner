@@ -8,12 +8,12 @@ import sys
 from methods import *
 from output import *
 from selection import *
-# from gui import *
+from gui import *
 import getpass
 import hashlib
 
 
-def startProcess():
+def startProcess(instance):
     # try:
     heats = partitionData()
     createParticipantSheets()
@@ -22,7 +22,8 @@ def startProcess():
     #     print(e)
 
 if __name__ == '__main__':
-    startProcess()
+    # freestylePlannerGuiApp().run()
+    startProcess([])
     # hash = hashlib.sha512()
     # while True:
     #     if "PlannerBypass" in os.environ:
@@ -38,9 +39,9 @@ if __name__ == '__main__':
     #                 password = f.readlines()
     #             hash.update(pword.encode())
     #             if hash.hexdigest() == password[0]:
-    #                 partitionData()
+    #                 freestylePlannerGuiApp().run()
     #             else:
     #                 print("Wrong Password")
     # ran = False
-    # freestylePlannerGuiApp().run()
+
 

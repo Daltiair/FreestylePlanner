@@ -5,14 +5,12 @@ import init
 from debug import *
 from init import buildInstTree, deleteEmpty, buildInst2SingTree
 from methods import *
-from conflictSingles import resolveConflictSingles
-from conflictCouples import resolveConflictCouples
-from conflict import resetSolutionLogic
 from init import updateDanceDfs, getNode, buildInstTree, instructorOperation
 from Structures import Heat, HeatList, ConflictLog, ConflictItemSingle, ConflictItemCouple
 from output import buildEvent, makeHeatDict, buildEventfast
 from selection_singles import selectionSingles
 from selection_couples import selectionCouples
+from selection_alltype import  selectionAlltype
 
 '''
     Loop through all dances in the heats dictionary depth first create all heats and store them
@@ -162,17 +160,16 @@ def Selection(heats):
                     a_floors = []
                     afin_rooms = []
                     # Separate out singles and couple assigned floors
-                    if 't' in div or 'T' in div:
-                        for floor in floor_info:
-                            if floor[0] == "S":
-                                s_floors.append(floor)
-                                sfin_rooms.append(0)
-                            elif floor[0] == "C":
-                                c_floors.append(floor)
-                                cfin_rooms.append(0)
-                            elif floor[0] == "A":
-                                a_floors.append(floor)
-                                afin_rooms.append(0)
+                    for floor in floor_info:
+                        if floor[0] == "S":
+                            s_floors.append(floor)
+                            sfin_rooms.append(0)
+                        elif floor[0] == "C":
+                            c_floors.append(floor)
+                            cfin_rooms.append(0)
+                        elif floor[0] == "A":
+                            a_floors.append(floor)
+                            afin_rooms.append(0)
                     heat_key = each + '-' + every + '-' + ev + '-' + str(len(heat_list.getRostersList()))
                     log = ConflictLog(floor_info)  # make conflict log for this heat
                     # Create list for divison information for heat, floor_info is used for selection only
@@ -186,11 +183,14 @@ def Selection(heats):
                             heat_floors.append([])
                     heat = Heat(heat_key, heat_floors, heat_roster, [0 for x in range(floors)], singles_in_heat, instructors_in_heat, couples_in_heat)
                     while not heat_finished:
-                        # ---------------------------------------------- Singles ---------------------------------------
                         # Make Instructors for heat list that will change based on placed contestants and instructors
                         instructors_available_for_heat = []
                         init.starting_instructors_for_heat = []
                         for roomid, info in enumerate(s_floors):
+                            tmp2 = getNode(init.inst_tree, info)
+                            instructors_available_for_heat.append(list(tmp2.keys()))
+                            init.starting_instructors_for_heat.append(list(tmp2.keys()))
+                        for roomid, info in enumerate(a_floors):
                             tmp2 = getNode(init.inst_tree, info)
                             instructors_available_for_heat.append(list(tmp2.keys()))
                             init.starting_instructors_for_heat.append(list(tmp2.keys()))
@@ -200,6 +200,7 @@ def Selection(heats):
                         print()
                         init.debug_floors = s_floors
                         init.logString += "\n" + "Event " + ev + ", Heat number: " + str(heat_list.getHeatCount())
+                        # ---------------------------------------------- Singles ---------------------------------------
                         if len(s_floors) != 0:  # If no singles move to couples selection
                             selectionSingles(heat, heat_list, s_floors, sfin_rooms, instructors_available_for_heat, log, couples_per_floor, acceptablecouples)
                             heat.printHeat()
@@ -221,15 +222,12 @@ def Selection(heats):
                                 init.dance_dfs["D"] = 1
                         # ---------------------------------------------- Couples ---------------------------------------
                         if len(c_floors) != 0:  # if a couples key has been picked
-                            if len(s_floors) > 0:
-                                singles_index = len(s_floors) - 1
-                            else:
-                                singles_index = 0
+                            singles_index = len(s_floors)
                             selectionCouples(heat, heat_list, singles_index, c_floors, cfin_rooms, instructors_available_for_heat, log, couples_per_floor, acceptablecouples)
                             # Determine if poach needed
                             for roomid, room_info in enumerate(c_floors):
                                 if len(heat.getRoster()[roomid]) < acceptablecouples:
-                                    PoachPrevHeatsCouples(roomid, room_info, heat, heat_list, acceptablecouples)
+                                    PoachPrevHeatsCouples(roomid+singles_index, room_info, heat, heat_list, acceptablecouples)
                             if init.debug:
                                 if init.count:
                                     countInstances(heat, heat_list)
@@ -241,6 +239,26 @@ def Selection(heats):
                                         checkheat(check)
                                     checkheat(heat)
                             if init.dance_dfs.get("C") is None and init.couples_only:
+                                init.dance_dfs["D"] = 1
+                        # ---------------------------------------------- Joint -----------------------------------------
+                        if len(a_floors) != 0:
+                            log_c = ConflictLog(floor_info)
+                            selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_available_for_heat, log, log_c, couples_per_floor, acceptablecouples)
+                            # Determine if poach needed
+                            for roomid, room_info in enumerate(a_floors):
+                                if len(heat.getRoster()[roomid]) < acceptablecouples:
+                                    PoachPrevHeatsAll(roomid, room_info, heat, heat_list, acceptablecouples)
+                            if init.debug:
+                                if init.count:
+                                    countInstances(heat, heat_list)
+                                if init.inst:
+                                    for level in instructors_available_for_heat:
+                                        print(level)
+                                if init.check:
+                                    for check in heat_list.getRostersList():
+                                        checkheat(check)
+                                    checkheat(heat)
+                            if init.dance_dfs.get("A") is None:
                                 init.dance_dfs["D"] = 1
     # ------------------------------------------------- Double up on unused rooms --------------------------------------
                         # If levels < floors and in split mode and floors were not all forced finihsed

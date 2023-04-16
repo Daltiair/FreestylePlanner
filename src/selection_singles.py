@@ -97,8 +97,7 @@ def selectionSingles(heat, heat_list, s_floors, sfin_rooms, instructors_availabl
                         if candidate.loc[:, init.ev][0] == 1:
                             print("removing", candidate.loc[:, contestant_col][0], "from pool")
                             dance_df = dance_df.reset_index(drop=True)
-                            dance_df = dance_df.drop(
-                                dance_df[dance_df[contestant_col] == candidate.loc[0, contestant_col]].index)
+                            dance_df = dance_df.drop(dance_df[dance_df[contestant_col] == candidate.loc[0, contestant_col]].index)
                         else:
                             dance_df.loc[dance_df.loc[:, contestant_col] == candidate.loc[0, contestant_col], init.ev] = \
                             candidate.loc[0, init.ev] - 1
@@ -118,8 +117,7 @@ def selectionSingles(heat, heat_list, s_floors, sfin_rooms, instructors_availabl
                     print("Instructors for", room_info, "all gone")
                 # Deal with conflicts if reached conflict limit
                 if consecutive > init.max_conflicts:
-                    resolve = resolveConflictSingles(roomid, dance_df, log, heat, heat_list,
-                                                     instructors_available_for_heat, init.ev)
+                    resolve = resolveConflictSingles(roomid, dance_df, log, heat, heat_list, instructors_available_for_heat, init.ev)
                     dance_df = getNode(init.dance_dfs, room_info)
                     if init.debug:
                         if init.count:
@@ -138,12 +136,10 @@ def selectionSingles(heat, heat_list, s_floors, sfin_rooms, instructors_availabl
                         if sfin_rooms[i] > 0:  # Must not be finished already
                             continue
                         if len(singles_in_heat[i]) < couples_per_floor and dance_df.shape[0] >= 1:
-                            print(
-                                "Adding Instructors back in, may only have a few available need to swap around contestants")
+                            print("Adding Instructors back in, may only have a few available need to swap around contestants")
                             before_reload = instructors_available_for_heat[i].copy()
                             instructors_available_for_heat[i] = list(inst_tree_node.keys())
-                            if instructors_available_for_heat[
-                                i] == before_reload:  # If list still empty or forced, mark room as finished
+                            if instructors_available_for_heat[i] == before_reload:  # If list still empty or forced, mark room as finished
                                 print("Instructor list still empty after a refresh, mark room as finished")
                                 sfin_rooms[i] = 1
                             elif sfin_rooms[i] == 2:
@@ -173,8 +169,7 @@ def selectionSingles(heat, heat_list, s_floors, sfin_rooms, instructors_availabl
                 if len(instructors_available_for_heat[roomid]) == 0:
                     print("Instructors for", room_info, "all gone")
                     if len(singles_in_heat[roomid]) < couples_per_floor and dance_df.shape[0] >= 1:
-                        print(
-                            "Adding Instructors back in, may only have a few available need to swap around contestants")
+                        print("Adding Instructors back in, may only have a few available need to swap around contestants")
                         before_reload = instructors_available_for_heat[roomid].copy()
                         instructors_available_for_heat[roomid] = list(inst_tree_node.keys())
                         if instructors_available_for_heat[

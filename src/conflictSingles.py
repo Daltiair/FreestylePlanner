@@ -9,6 +9,7 @@ from Structures import Heat, HeatList, ConflictLog, ConflictItemSingle, Resolver
 from nconflictSingles import ResolveNOrderSingles
 import traceback
 
+
 def resolveConflictSingles(roomid, dance_df, log, heat, heat_list, instructors_available_for_heat, ev):
     resolverLog = ResolverConflictLog()
     singles_in_heat = heat.getSingles()
@@ -544,7 +545,7 @@ def resolveConflictSingles(roomid, dance_df, log, heat, heat_list, instructors_a
                             return 1
             except Exception:
                 print(traceback.format_exc())
-                pass
+                print()
         # Try to solve 2+ order conflicts
         print("No 1st order solutions found")
         # If the next order has not been attempted yet, stops resetting solution if stuck between orders

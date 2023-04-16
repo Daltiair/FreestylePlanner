@@ -7,6 +7,7 @@ from Structures import Heat, HeatList, ConflictLog, ConflictItemSingle, Resolver
     ResolverConflictItemCouple
 import traceback
 
+
 def ResolveNOrderSingles(log, resolverlog, order, heat, heat_list, roomid, instructors_available_for_heat, ev):
     resolverLogn = ResolverConflictLog()
     conflicts = resolverlog.getRoomlog()
@@ -87,47 +88,44 @@ def ResolveNOrderSingles(log, resolverlog, order, heat, heat_list, roomid, instr
                     swapper = [conflict_heat_index, conflict_room, conflict_index]
                     inst_tree_node = getNode(init.inst_tree, conflict_div)
                     # See if contestant has another free instructor to rid conflict
-                    try:
-                        for possible_inst in conflict_entry.loc[0, "Instructor Dancer #'s"]:
-                            # if instructor is not conflict instructor and not being used in heat
-                            if possible_inst != conflict_inst and possible_inst not in instructors_list:
-                                solution_num += 1
-                                if init.solution[order-1] > solution_num:
-                                    print("Solution already attemped moving to another solution")
-                                    continue
-                                solvedLogic(order-1)
-                                # instructors_in_heat[conflict_room][conflict_index] = possible_inst  # redundant
-                                instructor_data = init.df_inst[init.df_inst["Dancer #"] == possible_inst].reset_index(drop=True)
-                                conflict_entry.loc[0, inst_col] = instructor_data.loc[0, "Dancer #"]
-                                conflict_entry.loc[0, inst_fname] = instructor_data.loc[0, "First Name"]
-                                conflict_entry.loc[0, inst_lname] = instructor_data.loc[0, "Last Name"]
-                                conflict_heat.replaceContestant(conflict_room, conflict_index, conflict_entry)
-                                if conflict_heat_index == -1:
-                                    if conflict_inst not in instructors_available_for_heat[conflict_room] and inst_tree_node.get(conflict_inst) is not None:
-                                        instructors_available_for_heat[conflict_room].append(conflict_inst)
-                                    if possible_inst in instructors_available_for_heat[conflict_room]:
-                                        instructors_available_for_heat[conflict_room].remove(possible_inst)
-                                    log.clearConflict(possible_inst)  # Clear out the conflict of new instructor
-                                    log.clearConflict(conflict_inst)  # Clear out the conflict of the new instructor
-                                print("Resolved " + str(order) + " order conflict by changing instructor", conflict_inst, "to", possible_inst, "in heat", conflict_heat_index, conflict_div)
-                                return nminus
-                            elif possible_inst != conflict_inst:
-                                # Find index of this nth conflict
-                                for j, room in enumerate(instructors_to_compare):
-                                    if possible_inst in room:
-                                        nconflict_index = room.index(possible_inst)
-                                        nconflict_room = j
-                                        nconflict_div = conflict_heat.getDiv()[nconflict_room] # TODO have repeating conflicts here
-                                resolverconflict = ResolverConflictItemSingle(1, nconflict_div, conflict_heat_index,
-                                                                              nconflict_room, nconflict_index,
-                                                                              instructors_in_heat, singles_in_heat,
-                                                                              possible_inst, conflict, swapper)
+                    for possible_inst in conflict_entry.loc[0, "Instructor Dancer #'s"]:
+                        # if instructor is not conflict instructor and not being used in heat
+                        if possible_inst != conflict_inst and possible_inst not in instructors_list:
+                            solution_num += 1
+                            if init.solution[order-1] > solution_num:
+                                print("Solution already attemped moving to another solution")
+                                continue
+                            solvedLogic(order-1)
+                            # instructors_in_heat[conflict_room][conflict_index] = possible_inst  # redundant
+                            instructor_data = init.df_inst[init.df_inst["Dancer #"] == possible_inst].reset_index(drop=True)
+                            conflict_entry.loc[0, inst_col] = instructor_data.loc[0, "Dancer #"]
+                            conflict_entry.loc[0, inst_fname] = instructor_data.loc[0, "First Name"]
+                            conflict_entry.loc[0, inst_lname] = instructor_data.loc[0, "Last Name"]
+                            conflict_heat.replaceContestant(conflict_room, conflict_index, conflict_entry)
+                            if conflict_heat_index == -1:
+                                if conflict_inst not in instructors_available_for_heat[conflict_room] and inst_tree_node.get(conflict_inst) is not None:
+                                    instructors_available_for_heat[conflict_room].append(conflict_inst)
+                                if possible_inst in instructors_available_for_heat[conflict_room]:
+                                    instructors_available_for_heat[conflict_room].remove(possible_inst)
+                                log.clearConflict(possible_inst, -1)  # Clear out the conflict of new instructor
+                                log.clearConflict(conflict_inst, -1)  # Clear out the conflict of the new instructor
+                            print("Resolved " + str(order) + " order conflict by changing instructor", conflict_inst, "to", possible_inst, "in heat", conflict_heat_index, conflict_div)
+                            return nminus
+                        elif possible_inst != conflict_inst:
+                            # Find index of this nth conflict
+                            for j, room in enumerate(instructors_to_compare):
+                                if possible_inst in room:
+                                    nconflict_index = room.index(possible_inst)
+                                    nconflict_room = j
+                                    nconflict_div = conflict_heat.getDiv()[nconflict_room] # TODO have repeating conflicts here
+                            resolverconflict = ResolverConflictItemSingle(1, nconflict_div, conflict_heat_index,
+                                                                          nconflict_room, nconflict_index,
+                                                                          instructors_in_heat, singles_in_heat,
+                                                                          possible_inst, conflict, swapper)
 
-                                nconflict_counter += 1
-                                resolverLogn.addConflict(resolverconflict, con_num, nconflict_counter)
-                                print(nconflict_counter, 'Internal Conflict with Inst', possible_inst)
-                    except Exception as e:
-                        print(e)
+                            nconflict_counter += 1
+                            resolverLogn.addConflict(resolverconflict, con_num, nconflict_counter)
+                            print(nconflict_counter, 'Internal Conflict with Inst', possible_inst)
                     # Check if conflict can be swapped with an entry in a previous heat
                     # loop heat_list and check metadata
                     print("No internal solution found checking prev heats")

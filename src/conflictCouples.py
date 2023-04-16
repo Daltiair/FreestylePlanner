@@ -3,7 +3,7 @@ import pandas as pd
 import init
 from conflict import solvedLogic
 from conflictSingles import resolveConflictSingles
-from debug import countInstances,checkheat
+from debug import countInstances, checkheat
 from init import getNode, updateDanceDfs, buildInstTree
 from Structures import *
 from nconflictCouples import ResolveNOrderCouples
@@ -22,7 +22,7 @@ def resolveConflictCouples(roomid, log, heat, heat_list, instructors_available_f
     roomlog = log.getRoomlog()
     mode_cont = roomlog[roomid]["mode_cont"][0]
 
-    # get all conflicts with mode instructor first
+    # get all conflicts with mode contestant first
     for each in roomlog[roomid]["conf_list"]:
         if each.getLead() == mode_cont and each.getCode() != 2:
             conflicts.append(each)
@@ -245,7 +245,7 @@ def resolveConflictCouples(roomid, log, heat, heat_list, instructors_available_f
                         return 1
             except Exception:
                 print(traceback.format_exc())
-                pass
+                print()
         print("no", order, 'solutions found')
         # If the next order has not been attempted yet, stops resetting solution if stuck between orders
         if init.solution[order] == 0:
