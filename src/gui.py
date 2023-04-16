@@ -14,7 +14,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.scrollview import ScrollView
 import os
 import xlwings as xw
-from methods import partitionData
+from FreestylePlannerMain import startProcess
 
 
 class freestylePlannerGuiApp(App):
@@ -40,7 +40,7 @@ class freestylePlannerGuiApp(App):
 
         # Create Run Button
         self.runbutton = Button(text="Run", height=40, width=65)
-        self.runbutton.bind(on_press=partitionData)
+        self.runbutton.bind(on_press=startProcess)
         self.buttons.add_widget(self.runbutton)
         self.runbutton.disabled = True
 
