@@ -4,8 +4,9 @@ import init
 from conflict import solvedLogic
 from debug import countInstances, checkheat
 from init import getNode, updateDanceDfs, buildInstTree
-from Structures import Heat, HeatList, ConflictLog, ConflictItemSingle, ResolverConflictItemSingle, ResolverConflictLog, \
-    ResolverConflictItemCouple
+from Heat import Heat, HeatList
+from ConflictLog import ConflictLog, ResolverConflictLog
+from Structures import ConflictItemSingle, ConflictItemCouple, ResolverConflictItemSingle, ResolverConflictItemCouple
 from nconflictSingles import ResolveNOrderSingles
 import traceback
 
@@ -17,7 +18,8 @@ def resolveConflictSingles(roomid, dance_df, log, heat, heat_list, instructors_a
     if init.debug:
         for level in instructors_available_for_heat:
             print(level)
-    if init.solution == 0:
+
+    if init.solution[0] == 0:
         init.solution[0] = 1  # start the solution logic
     if init.solved[0] == -1:  # Termination after solution number is 10
         return -1
@@ -268,8 +270,14 @@ def resolveConflictSingles(roomid, dance_df, log, heat, heat_list, instructors_a
                         tmp = each.replaceContestant(swapping_room, index_2_swap, conflict_entry)
                         print('Heat in question')
                         heat.replaceContestant(conflict_room, conflict_index, tmp)
+                        if tmp.loc[0, "type id"] == "L":
+                            inst_col = "Follow Dancer #"
+                        elif tmp.loc[0, "type id"] == "F":
+                            inst_col = "Lead Dancer #"
+                        # Add instrcutor swapped out back into available pool, if in df pool
                         if conflict_inst not in instructors_available_for_heat[conflict_room] and inst_tree_node.get(conflict_inst) is not None:
                             instructors_available_for_heat[conflict_room].append(conflict_inst)
+                        # Remove instructor swapped in
                         if tmp.loc[0, inst_col] in instructors_available_for_heat[conflict_room]:
                             instructors_available_for_heat[conflict_room].remove(tmp.loc[0, inst_col])
                         log.clearConflict(conflict_inst, -1)

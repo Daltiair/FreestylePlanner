@@ -5,6 +5,8 @@ from conflict import solvedLogic
 from conflictSingles import resolveConflictSingles
 from debug import countInstances, checkheat
 from init import getNode, updateDanceDfs, buildInstTree
+from Heat import Heat, HeatList
+from ConflictLog import ConflictLog, ResolverConflictLog
 from Structures import *
 from nconflictCouples import ResolveNOrderCouples
 import traceback
@@ -17,6 +19,11 @@ def resolveConflictCouples(roomid, log, heat, heat_list, instructors_available_f
     singles_in_heat = heat.getSingles()
     instructors_in_heat = heat.getInstructors()
     couples_in_heat = heat.getCouples()
+
+    if init.solution[0] == 0:
+        init.solution[0] = 1  # start the solution logic
+    if init.solved[0] == -1:  # Termination after solution number is 10
+        return -1
 
     conflicts = []
     roomlog = log.getRoomlog()
@@ -41,7 +48,7 @@ def resolveConflictCouples(roomid, log, heat, heat_list, instructors_available_f
     init.presolved = init.solved.copy()
     # presolved = init.presolved[order-1]
 
-    solution_num = 1
+    solution_num = 0
     while nordersolved:
         # loop over all conflicts for this heat's roomid
         for con_num, conflict in enumerate(conflicts):

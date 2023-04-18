@@ -8,7 +8,7 @@ from debug import countInstances, checkheat
 from methods import backfill
 
 
-def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_available_for_heat, log, log_c, couples_per_floor, acceptablecouples):
+def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_available_for_heat, log_s, log_c, couples_per_floor, acceptablecouples):
     print("Selecting All Type")
     singles_in_heat = heat.getSingles()
     couples_in_heat = heat.getCouples()
@@ -74,10 +74,10 @@ def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_availabl
                         # Add to the conflict log
                         if dup_singl:
                             conflict = ConflictItemSingle(2, instl)
-                            log.addConflict(conflict, roomid)
+                            log_s.addConflict(conflict, roomid)
                         if dup_singf:
                             conflict = ConflictItemSingle(2, instf)
-                            log.addConflict(conflict, roomid)
+                            log_s.addConflict(conflict, roomid)
                         if dup_coup:
                             conflict = ConflictItemCouple(1, number, fnumber)
                             log_c.addConflict(conflict, roomid)
@@ -95,7 +95,7 @@ def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_availabl
                             instructor_taken = True
                             break
                     if instructor_taken:
-                        log.addConflict(ConflictItemSingle(1, inst), roomid)
+                        log_s.addConflict(ConflictItemSingle(1, inst), roomid)
                         consecutive += 1
                     else:  # Find a single to pair with this instructor
                         # Loop over each row in the df for this level
@@ -120,6 +120,13 @@ def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_availabl
                             # Loop over the instructor list for the contestant row
                             for num in entry["Instructor Dancer #'s"]:
                                 if num == inst:
+                                    for i, rost in enumerate(couples_in_heat):
+                                        # If there is a couple causing a conflict with this single
+                                        if rost.count(entry[contestant_col]) > 0:
+                                            next_contestant = True
+                                            l = entry["Lead Dancer #"]
+                                            f = entry["Follow Dancer #"]
+                                            log_c.addConflict(ConflictItemCouple(1, l, f), roomid)
                                     for i, rost in enumerate(singles_in_heat):
                                         if rost.count(entry[contestant_col]) > 0:
                                             next_contestant = True
@@ -133,6 +140,8 @@ def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_availabl
                                         candidate.loc[0, inst_lname] = instructor_data.loc[0, "Last Name"]
                                         placeable = True
                                         break
+                        if not placeable:
+                            log_s.addConflict(ConflictItemSingle(2, inst), roomid)
                 if placeable:  # There are no conflicts
                     # if candidate possible add to the roster, remove that entry from the pool
                     heat.addEntry(candidate, roomid)
@@ -170,7 +179,7 @@ def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_availabl
                     consecutive += 1
                 # Resolve Conflicts, if needed
                 if consecutive >= init.max_conflicts:
-                    resolve = resolveConflictAll(roomid, log, log_c, heat, heat_list, instructors_available_for_heat, init.ev)
+                    resolve = resolveConflictAll(roomid, log_s, log_c, heat, heat_list, instructors_available_for_heat, init.ev)
                     dance_df = getNode(init.dance_dfs, room_info)
                     # Check if any instructors lists are now empty
                     for i, room in enumerate(instructors_available_for_heat):

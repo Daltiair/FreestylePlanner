@@ -6,7 +6,9 @@ from debug import *
 from init import buildInstTree, deleteEmpty, buildInst2SingTree
 from methods import *
 from init import updateDanceDfs, getNode, buildInstTree, instructorOperation
-from Structures import Heat, HeatList, ConflictLog, ConflictItemSingle, ConflictItemCouple
+from Heat import Heat, HeatList
+from ConflictLog import ConflictLog
+from Structures import ConflictItemSingle, ConflictItemCouple
 from output import buildEvent, makeHeatDict, buildEventfast
 from selection_singles import selectionSingles
 from selection_couples import selectionCouples

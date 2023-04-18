@@ -8,7 +8,7 @@ import sys
 from methods import *
 from output import *
 from selection import *
-from gui import *
+# from gui import *
 import getpass
 import hashlib
 
