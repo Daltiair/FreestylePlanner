@@ -1,16 +1,16 @@
 import pandas as pd
 import os
-import random
-import init
 from debug import *
 from init import buildInstTree, deleteEmpty, buildInst2SingTree
 from methods import *
-from init import updateDanceDfs, getNode, buildInstTree, instructorOperation
-from Structures import Heat, HeatList, ConflictLog, ConflictItemSingle, ConflictItemCouple
-from output import buildEvent, makeHeatDict, buildEventfast
+from init import getNode, buildInstTree, instructorOperation
+from Heat import Heat, HeatList
+from ConflictLog import ConflictLog
+from output import buildEvent
 from selection_singles import selectionSingles
 from selection_couples import selectionCouples
-from selection_alltype import  selectionAlltype
+from selection_alltype import selectionAlltype
+from Poach import *
 
 '''
     Loop through all dances in the heats dictionary depth first create all heats and store them
@@ -64,6 +64,7 @@ def Selection(heats):
                 couples_per_floor = int(eventrow.loc[:, "Couples Per Floor"][0])
                 acceptablecouples = int(couples_per_floor/2)+2
                 div = eventrow.loc[:, 'Event Divisions'][0]
+                init.eventdiv = div
                 if type(div) == float:  # if blank
                     div = ["n"]
                 else:
@@ -92,7 +93,8 @@ def Selection(heats):
                     init.eventages_s = []
 
                 # If Couples and Singles need to be combined
-                if div.count('T') == 0 and div.count('t') == 0 and (init.dance_dfs.get("S") is not None) and (init.dance_dfs.get("C") is not None):
+                # if div.count('T') == 0 and div.count('t') == 0 and (init.dance_dfs.get("S") is not None) and (init.dance_dfs.get("C") is not None):
+                if div.count('T') == 0 and div.count('t') == 0:
                     for i, key in enumerate(init.dance_dfs.keys()):
                         if i == 0:
                             tmp = init.dance_dfs[key]
@@ -107,8 +109,12 @@ def Selection(heats):
                         else:
                             tmp = pd.concat([tmp, init.dance_dfs[key]])
                     init.dance_dfs["A"] = tmp
-                    del init.dance_dfs["S"]
-                    del init.dance_dfs["C"]
+
+                    if init.dance_dfs.get("S") is not None:
+                        del init.dance_dfs["S"]
+
+                    if init.dance_dfs.get("C") is not None:
+                        del init.dance_dfs["C"]
 
                 # Check if current dfs are empty, and remove them
                 deleteEmpty(init.dance_dfs)
@@ -121,20 +127,18 @@ def Selection(heats):
                     init.logString += "\n" + "No data in this category " + ev
                     heat_list = -1
                     continue
+                singles_empty = False
+                couples_empty = False
+                if init.dance_dfs.get("A") is None:
+                    if init.dance_dfs.get("S") is None:
+                        singles_empty = True
+                    if init.dance_dfs.get("C") is None:
+                        couples_empty = True
                 pre_dance_dfs = init.dance_dfs.copy()
                 init.inst_tree = buildInstTree(init.dance_dfs, {}, ev)
                 init.inst2sing_tree = buildInst2SingTree(init.dance_dfs, {}, ev)
                 pre_inst_tree = init.inst_tree.copy()
 # ---------------------------------------------- Selection Process -----------------------------------------------------
-                # Check if dfs are empty
-                if init.dance_dfs.get("S") is None:
-                    singles_empty = True
-                else:
-                    singles_empty = False
-                if init.dance_dfs.get("C") is None:
-                    couples_empty = True
-                else:
-                    couples_empty = False
                 split_mode = False
                 while init.dance_dfs.get("D") is None:  # while there are contestants in the dfs still
                     heat_roster = []  # holds full contestant data for a heat, each element is a list for a dance floor
@@ -181,7 +185,7 @@ def Selection(heats):
                         # Fill in unassigned rooms
                         for floor in range(floors-len(floor_info)):
                             heat_floors.append([])
-                    heat = Heat(heat_key, heat_floors, heat_roster, [0 for x in range(floors)], singles_in_heat, instructors_in_heat, couples_in_heat)
+                    heat = Heat(heat_key, couples_per_floor, heat_floors, heat_roster, [0 for x in range(floors)], singles_in_heat, instructors_in_heat, couples_in_heat)
                     while not heat_finished:
                         # Make Instructors for heat list that will change based on placed contestants and instructors
                         instructors_available_for_heat = []
@@ -260,11 +264,17 @@ def Selection(heats):
                                     checkheat(heat)
                             if init.dance_dfs.get("A") is None:
                                 init.dance_dfs["D"] = 1
-    # ------------------------------------------------- Double up on unused rooms --------------------------------------
+    # ----------------------------------------- Double up on unused rooms ----------------------------------------------
                         # If levels < floors and in split mode and floors were not all forced finihsed
                         # figure out if the current selection pool can be put into open room(s)
-                        statement_floors = sfin_rooms + cfin_rooms
+                        statement_floors = sfin_rooms + cfin_rooms + afin_rooms
+                        if init.dance_dfs.get("A") is None:
+                            if init.dance_dfs.get("S") is None:
+                                singles_empty = True
+                            if init.dance_dfs.get("C") is None:
+                                couples_empty = True
                         if split_mode and (not (singles_empty and couples_empty)) and statement_floors.count(1) > 0:
+                            print()
                             print('Spliting a Division on the floor')
                             # Sanity Check all the current floors
                             splits_count = [[0, 0, 0]]
@@ -279,8 +289,13 @@ def Selection(heats):
                                     if not unique >= acceptablecouples*(floor_info.count(info)+1):  # If room cannot be split due to instructor constraints
                                         continue
                                     count = findContestantCount(init.dance_dfs, info, ev)
-                                else:  # if a couples division
+                                elif info[0] == "C":  # if a couples division
                                     if cfin_rooms[i-singles_index] > 1:  # if room was forced finished
+                                        print(info, "was forced finished, not able to be split")
+                                        continue
+                                    count = findContestantCount(init.dance_dfs, info, ev)
+                                else:  # If and all type division
+                                    if afin_rooms[i] > 1:  # if room was forced finished
                                         print(info, "was forced finished, not able to be split")
                                         continue
                                     count = findContestantCount(init.dance_dfs, info, ev)
@@ -317,13 +332,15 @@ def Selection(heats):
                                     # Choose the largest div, then re-organize the list after picking
                                     floor_info.append(takefrom_info[0])
                                     log.addRoom(takefrom_info[0])
-                                    if 't' in div or 'T' in div:
-                                        if splits_info[0][0] == "S":
-                                            s_floors.append(takefrom_info[0])
-                                            sfin_rooms.append(0)
-                                        else:
-                                            c_floors.append(takefrom_info[0])
-                                            cfin_rooms.append(0)
+                                    if splits_info[0][0] == "S":
+                                        s_floors.append(takefrom_info[0])
+                                        sfin_rooms.append(0)
+                                    elif splits_info[0][0] == "C":
+                                        c_floors.append(takefrom_info[0])
+                                        cfin_rooms.append(0)
+                                    else:
+                                        a_floors.append(takefrom_info[0])
+                                        afin_rooms.append(0)
                                     # Decrement the counts
                                     takefrom_count[0][0] -= couples_per_floor
                                     takefrom_count[0][1] -= couples_per_floor
@@ -354,8 +371,9 @@ def Selection(heats):
                     tot_current_heats += 1
                     if tot_current_heats > init.max_heats:
                         print("Exceeded max heats for event time metrics")
-                    if init.dance_dfs.get("S") is None and init.dance_dfs.get("C") is None:
-                        init.dance_dfs["D"] = 1
+                    if init.dance_dfs.get("A") is None:
+                        if init.dance_dfs.get("S") is None and init.dance_dfs.get("C") is None:
+                            init.dance_dfs["D"] = 1
                 if heats[each][every].get(ev) is not None:
                     heats[each][every][ev] = heat_list
                     print(init.ev, "finished Selection with", dance_heat_count, "Heats")

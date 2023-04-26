@@ -1,6 +1,6 @@
 # Default ignored files
 /workspace.xml
 /.idea
-*.txt
 main.py
+*.txt
 ~$FreestyleEventPlannerInput.xlsm

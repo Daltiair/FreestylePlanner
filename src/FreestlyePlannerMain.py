@@ -22,26 +22,26 @@ def startProcess(instance):
     #     print(e)
 
 if __name__ == '__main__':
-
-    # freestylePlannerGuiApp().run()
+    freestylePlannerGuiApp().run()
     # startProcess([])
-    hash = hashlib.sha512()
+    # hash = hashlib.sha512()
+    # while True:
+    #     if "PlannerBypass" in os.environ:
+    #         partitionData()
+    #     else:
+    #         try:
+    #             pword = getpass.getpass(stream=sys.stderr)
+    #         except Exception as error:
+    #             print("Error", error)
+    #         else:
+    #             filepath = os.getcwd().replace('\src', "") + "/"
+    #             with open(filepath+'password.txt') as f:
+    #                 password = f.readlines()
+    #             hash.update(pword.encode())
+    #             if hash.hexdigest() == password[0]:
+    #                 freestylePlannerGuiApp().run()
+    #             else:
+    #                 print("Wrong Password")
+    # ran = False
 
-    while True:
-        if "PlannerBypass" in os.environ:
-            startProcess([])
-        else:
-            try:
-                pword = getpass.getpass(stream=sys.stderr)
-            except Exception as error:
-                print("Error", error)
-            else:
-                filepath = os.getcwd().replace('\src', "") + "/"
-                with open(filepath+'password.txt') as f:
-                    password = f.readlines()
-                hash.update(pword.encode())
-                if hash.hexdigest() == password[0]:
-                    freestylePlannerGuiApp().run()
-                else:
-                    print("Wrong Password")
 

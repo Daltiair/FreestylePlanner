@@ -5,14 +5,16 @@ from conflict import solvedLogic
 from conflictSingles import resolveConflictSingles
 from debug import countInstances, checkheat
 from init import getNode
-from Structures import *
-# from Heat import Heat, HeatList
+from Structures import ConflictItemSingle, ResolverConflictItemSingle, ResolverConflictItemCouple
+from Heat import Heat, HeatList
 from ConflictLog import ConflictLog, ResolverConflictLog
 from nconflictCouples import ResolveNOrderCouples
 import traceback
 
-def resolveConflictCouples(roomid, log, heat, heat_list, instructors_available_for_heat, ev):
-    resolverLog = ResolverConflictLog()
+
+def resolveConflictAllCC(roomid, log_s, log_c, heat, heat_list, instructors_available_for_heat, ev):
+    resolverLog_c = ResolverConflictLog()
+    resolverLog_s = ResolverConflictLog()
     # Create a new log for the singles conflicts
     singlelog = ConflictLog()
 
@@ -20,13 +22,8 @@ def resolveConflictCouples(roomid, log, heat, heat_list, instructors_available_f
     instructors_in_heat = heat.getInstructors()
     couples_in_heat = heat.getCouples()
 
-    if init.solution[0] == 0:
-        init.solution[0] = 1  # start the solution logic
-    if init.solved[0] == -1:  # Termination after solution number is 10
-        return -1
-
     conflicts = []
-    roomlog = log.getRoomlog()
+    roomlog = log_c.getRoomlog()
     mode_cont = roomlog[roomid]["mode_cont"][0]
 
     # get all conflicts with mode contestant first
@@ -165,7 +162,7 @@ def resolveConflictCouples(roomid, log, heat, heat_list, instructors_available_f
                         if l_dup or f_dup:
                             nconflict_counter += 1
                             resolverconflict = ResolverConflictItemCouple(2, nconflict_div, heat_index, nconflict_room, nconflict_index, couples_in_heat, singles_in_heat, [conflict_lead, conflict_follow], conflict, swapper)
-                            resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
+                            resolverLog_c.addConflict(resolverconflict, con_num, nconflict_counter)
                             print(nconflict_counter, "external conflict with heat,room,index", heat_index, nconflict_room, nconflict_index, "contestant", [conflict_lead, conflict_follow], "div", nconflict_div)
                             dup = True
                         if dup:
@@ -183,6 +180,9 @@ def resolveConflictCouples(roomid, log, heat, heat_list, instructors_available_f
                             index_iter = 0
                             index_2_swap = -1
                             for contestant in placed_coup[swapping_room]:
+                                if contestant == -1:
+                                    index_iter += 1
+                                    continue
                                 swappee = [heat_index, swapping_room, index_iter]
                                 for i, singles in enumerate(heat.getSingles()):
                                     if contestant in singles:  # make sure the conflict is not because it has some inst trying to be freed
@@ -218,7 +218,7 @@ def resolveConflictCouples(roomid, log, heat, heat_list, instructors_available_f
                                             nconflict_index = nconflict_index - 1
                                         nconflict_index = int(nconflict_index/2)
                                         resolverconflict = ResolverConflictItemCouple(2, nconflict_div, -1, nconflict_room, nconflict_index, placed_coup[swapping_room], placed_sing[swapping_room], [conflict_lead, conflict_follow], conflict, [swapper, swappee])
-                                        resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
+                                        resolverLog_c.addConflict(resolverconflict, con_num, nconflict_counter)
                                         print("Couple Conflict, Swappee conflict in heat,room,index", heat_index, swapping_room, placed_coup[swapping_room].index(contestant), "contestant", contestant)
                                 # if no conflicts with both lead and follow, make the swap with entry index i
                                 if math.fmod(index_iter, 2) == 1:
@@ -243,10 +243,10 @@ def resolveConflictCouples(roomid, log, heat, heat_list, instructors_available_f
                         # if there are no duplicates, swap
                         tmp = each.replaceContestant(swapping_room, index_2_swap, conflict_entry)
                         heat.replaceContestant(conflict_room, conflict_index, tmp)
-                        log.clearConflict(-1, [conflict_lead, conflict_follow])
+                        log_c.clearConflict(-1, [conflict_lead, conflict_follow])
                         clearinglist = [heat.getCouples()[conflict_room][conflict_index],
                                         heat.getCouples()[conflict_room][conflict_index + 1]]
-                        log.clearConflict(-1, clearinglist)  # Clear out the couple swapped in, if there
+                        log_c.clearConflict(-1, clearinglist)  # Clear out the couple swapped in, if there
                         print("Resolved Conflict by swapping", conflict_lead, conflict_follow, "and", heat.getCouples()[conflict_room][conflict_index],
                               heat.getCouples()[conflict_room][conflict_index + 1], "from heat", heat_index)
                         return 1
@@ -257,7 +257,48 @@ def resolveConflictCouples(roomid, log, heat, heat_list, instructors_available_f
         # If the next order has not been attempted yet, stops resetting solution if stuck between orders
         if init.solution[order] == 0:
             init.solution[order] = 1
-        resolve = ResolveNOrderCouples(log, resolverLog, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
+        return -1
+            # Try to solve N order couples with couples
+            # resolve = ResolveNOrderAllCC(log, resolverLog, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
+            # if resolve != -1:
+            #     nordersolved = True
+            #     resolverLog.clearConflicts()
+            #     resolverLog_s.clearConflicts()
+            # # If there are N order singles conflicts try to solve them with singles
+            # elif len(resolverLog_s.getRoomlog()["conf_list"]) > 0:
+            #     resolve = ResolveNOrderAllSS(log, resolverLog_s, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
+            #     if resolve != -1:
+            #         nordersolved = True
+            #         resolverLog.clearConflicts()
+            #         resolverLog_s.clearConflicts()
+            #     # If there are N order couples conflicts try to solve them with singles
+            #     else:
+            #         resolve = ResolveNOrderAllCS(log, resolverLog, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
+            #         if resolve != -1:
+            #             nordersolved = True
+            #             resolverLog.clearConflicts()
+            #             resolverLog_s.clearConflicts()
+            #         # If there are N order Singles conflicts try to solve them with Couples
+            #         elif len(resolverLog_s.getRoomlog()["conf_list"]) > 0:
+            #             resolve = ResolveNOrderAllSC(log, resolverLog, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
+            #             if resolve != -1:
+            #                 nordersolved = True
+            #                 resolverLog.clearConflicts()
+            #                 resolverLog_s.clearConflicts()
+            #             else:
+            #                 return -1
+            #         else:
+            #             return -1
+            # # If there are N order couples conflicts try to solve them with singles
+            # else:
+            #     resolve = ResolveNOrderAllCS(log, resolverLog, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
+            #     if resolve != -1:
+            #         nordersolved = True
+            #         resolverLog_c.clearConflicts()
+            #         resolverLog_s.clearConflicts()
+            #     else:
+            #         return -1
+        dance_df = getNode(init.dance_dfs, heat.getDiv()[roomid])
         if init.debug:
             if init.count:
                 countInstances(heat, heat_list)
@@ -268,8 +309,4 @@ def resolveConflictCouples(roomid, log, heat, heat_list, instructors_available_f
                 for check in heat_list.getRostersList():
                     checkheat(check)
                 checkheat(heat)
-        if resolve != -1:
-            nordersolved = True
-            resolverLog.clearConflicts()
-        else:
-            return -1
+

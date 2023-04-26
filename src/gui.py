@@ -14,7 +14,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.scrollview import ScrollView
 import os
 import xlwings as xw
-from FreestylePlannerMain import startProcess
+from FreestlyePlannerMain import startProcess
 
 
 class freestylePlannerGuiApp(App):
@@ -42,42 +42,77 @@ class freestylePlannerGuiApp(App):
         self.runbutton = Button(text="Run", height=40, width=65)
         self.runbutton.bind(on_press=startProcess)
         self.buttons.add_widget(self.runbutton)
-        self.runbutton.disabled = True
+        # self.runbutton.disabled = True
 
         self.window.add_widget(self.buttons)
         # Create error display tabs
-        self.tb_panel = TabbedPanel(do_default_tab=False, pos_hint={"center_x":.5})
+        self.tb_panel = TabbedPanel(do_default_tab=False, pos_hint={"center_x": .5})
 
         # self.tb_panel.TabbedPanelHeader.default_tab = ""
         self.settings = TabbedPanelHeader(text="Settings")
+        self.settingslayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
+        self.settingslayout.bind(minimum_height=self.settingslayout.setter('height'))
+        self.settingscroll = ScrollView(size_hint=(1, 1), size=(self.settings.width, 100))
+        self.settingscroll.add_widget(self.settingslayout)
+        self.settings.content = self.settingscroll
+
         self.event = TabbedPanelHeader(text="Event Cat.")
+        self.eventlayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
+        self.eventlayout.bind(minimum_height=self.eventlayout.setter('height'))
+        self.eventscroll = ScrollView(size_hint=(1, 1), size=(self.event.width, 100))
+        self.eventscroll.add_widget(self.eventlayout)
+        self.event.content = self.eventscroll
+        
         self.singles = TabbedPanelHeader(text="Singles")
+        self.singleslayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
+        self.singleslayout.bind(minimum_height=self.singleslayout.setter('height'))
+        self.singlescroll = ScrollView(size_hint=(1, 1), size=(self.singles.width, 100))
+        self.singlescroll.add_widget(self.singleslayout)
+        self.singles.content = self.singlescroll
+        
         self.couples = TabbedPanelHeader(text="Couples")
+        self.coupleslayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
+        self.coupleslayout.bind(minimum_height=self.coupleslayout.setter('height'))
+        self.couplescroll = ScrollView(size_hint=(1, 1), size=(self.couples.width, 100))
+        self.couplescroll.add_widget(self.coupleslayout)
+        self.couples.content = self.couplescroll
+        
         self.pro = TabbedPanelHeader(text="Pro")
+        self.prolayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
+        self.prolayout.bind(minimum_height=self.prolayout.setter('height'))
+        self.proscroll = ScrollView(size_hint=(1, 1), size=(self.pro.width, 100))
+        self.proscroll.add_widget(self.prolayout)
+        self.pro.content = self.proscroll
+        
         self.instructors = TabbedPanelHeader(text="Instructors")
+        self.instructorslayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
+        self.instructorslayout.bind(minimum_height=self.instructorslayout.setter('height'))
+        self.instructorscroll = ScrollView(size_hint=(1, 1), size=(self.instructors.width, 100))
+        self.instructorscroll.add_widget(self.instructorslayout)
+        self.instructors.content = self.instructorscroll
 
         # use a scroll view as content of tab
         # self.singles.content = BoxLayout(pos_hint={'center_x': .5})
 
         # Update Singles Error Tab
-        file = os.getcwd().replace('\src', "") + '\\text.txt'
-        with open(file) as f:
-            filecontent = f.read()
+        # file = os.getcwd().replace('\src', "") + '\\text.txt'
+        # with open(file) as f:
+        #     filecontent = f.read()
 
-        scroll = ScrollView(size_hint=(None, None), scroll_y=1)
-        scroll.size = (self.singles.width, self.singles.height)
-        text = Label(text=filecontent, size_hint_y=None, padding=(10, 5))
-        text.text_size = (self.singles.width, self.singles.height)
-        text.halign = 'left'
-        text.valign = 'top'
-        text.height = text.texture_size[1]
-        scroll.add_widget(text)
-        self.singles.content = scroll
+        # scroll = ScrollView(size_hint=(None, None), scroll_y=1)
+        # scroll.size = (self.singles.width, self.singles.height)
+        # text = Label(text=filecontent, size_hint_y=None, padding=(10, 5))
+        # text.text_size = (self.singles.width, self.singles.height)
+        # text.halign = 'left'
+        # text.valign = 'top'
+        # text.height = text.texture_size[1]
+        # scroll.add_widget(text)
+        # self.singles.content = scroll
 
-        self.couples.content = ScrollView(size_hint=(1, None), size=(self.couples.width, self.couples.height))
-        self.settings.content = ScrollView(size_hint=(1, None), size=(self.settings.width, self.settings.height*2))
-        self.event.content = ScrollView(size_hint=(1, None), size=(self.event.width, self.event.height))
-        self.instructors.content = ScrollView(size_hint=(1, None), size=(self.instructors.width, self.instructors.height))
+        # self.couples.content = ScrollView(size_hint=(1, None), size=(self.couples.width, self.couples.height))
+        # self.settings.content = ScrollView(size_hint=(1, None), size=(self.settings.width, self.settings.height*2))
+        # self.event.content = ScrollView(size_hint=(1, None), size=(self.event.width, self.event.height))
+        # self.instructors.content = ScrollView(size_hint=(1, None), size=(self.instructors.width, self.instructors.height))
 
         self.tb_panel.add_widget(self.settings)
         self.tb_panel.add_widget(self.event)
@@ -128,6 +163,8 @@ class freestylePlannerGuiApp(App):
         Validate() will go over all entered data and make sure there are no
         """
         # Open excel wb, run the macro, and save the wb
+        # self.removelines()
+
         file = os.getcwd().replace('\src', "") + '\FreestyleEventPlannerInput.xlsm'
 
         self.runbutton.disabled = True
@@ -140,13 +177,14 @@ class freestylePlannerGuiApp(App):
         # Update Singles Error Tab
         file = os.getcwd().replace('\src', "") + '\SinglesErrors.txt'
         with open(file) as f:
-            filecontent = f.read()
+            filecontent = f.readlines()
 
-        if self.ran is True:
-            self.singles.content.remove_widget()
-        scroll = ScrollView()
-        scroll.add_widget(Label(text=filecontent))
-        self.singles.content = scroll
+        # if self.ran is True:
+        #     self.singles.content.remove_widget()
+        # scroll = ScrollView()
+        # scroll.add_widget(Label(text=filecontent))
+        # self.singles.content = scroll
+        self.addlines(file, self.singleslayout)
 
         # view = ScrollView(size_hint=(self.singles.width, None), size=(self.tb_panel.width, self.tb_panel.height),
         #            do_scroll_y=True, pos_hint={'left': 1})
@@ -154,10 +192,11 @@ class freestylePlannerGuiApp(App):
         # self.singles.content.add_widget(view)
 
         self.singles.background_normal = ''
-        if filecontent != "" or filecontent.find("Errors: (Heats will not be built while errors present)") > -1:
+        # if filecontent != "" or filecontent.find("Errors: (Heats will not be built while errors present)") > -1:
+        if filecontent[0] == "Errors: (Heats will not be built while errors present)\n":
             self.singles.background_color = [.5, 0, 0, 1]  # red
             errors[0] = 1
-        elif filecontent.find("Warnings: (Heats can be built while warnings present)") > -1:
+        elif filecontent[0] == "Warnings: (Heats can be built while warnings present)\n":
             self.singles.background_color = [.95, .9, 0, .77]  # Yellow
             errors[0] = 0
         else:
@@ -168,13 +207,15 @@ class freestylePlannerGuiApp(App):
         file = os.getcwd().replace('\src', "") + '\CouplesErrors.txt'
         with open(file) as f:
             filecontent = f.readlines()
-        self.couples.content.ScrollView.Label(text=filecontent)
+        # self.couples.content.ScrollView.Label(text=filecontent)
+
+        self.addlines(file, self.coupleslayout)
 
         self.couples.background_normal = ''
-        if filecontent != "" or filecontent.find("Errors: (Heats will not be built while errors present)") > -1:
+        if filecontent[0] == "Errors: (Heats will not be built while errors present)\n":
             self.couples.background_color = [.5, 0, 0, 1]  # red
             errors[1] = 1
-        elif filecontent.find("Warnings: (Heats can be built while warnings present)") > -1:
+        elif filecontent[0] == "Warnings: (Heats can be built while warnings present)\n":
             self.couples.background_color = [.95, .9, 0, .77]  # Yellow
             errors[1] = 0
         else:
@@ -185,13 +226,13 @@ class freestylePlannerGuiApp(App):
         file = os.getcwd().replace('\src', "") + '\InstructorsErrors.txt'
         with open(file) as f:
             filecontent = f.readlines()
-        self.instructors.content.add_widget(Label(text=filecontent))
-
+        # self.instructors.content.add_widget(Label(text=filecontent))
+        self.addlines(file, self.instructorslayout)
         self.instructors.background_normal = ''
-        if filecontent != "" or filecontent.find("Errors: (Heats will not be built while errors present)") > -1:
+        if filecontent[0] == "Errors: (Heats will not be built while errors present)\n":
             self.instructors.background_color = [.5, 0, 0, 1]  # red
             errors[2] = 1
-        elif filecontent.find("Warnings: (Heats can be built while warnings present)") > -1:
+        elif filecontent[0] == "Warnings: (Heats can be built while warnings present)\n":
             self.instructors.background_color = [.95, .9, 0, .77]  # Yellow
             errors[2] = 0
         else:
@@ -202,13 +243,13 @@ class freestylePlannerGuiApp(App):
         file = os.getcwd().replace('\src', "") + '\SettingsErrors.txt'
         with open(file) as f:
             filecontent = f.readlines()
-        self.settings.content.add_widget(Label(text=filecontent))
-
+        # self.settings.content.add_widget(Label(text=filecontent))
+        self.addlines(file, self.settingslayout)
         self.settings.background_normal = ''
-        if filecontent != "" or filecontent.find("Errors: (Heats will not be built while errors present)") > -1:
+        if filecontent[0] == "Errors: (Heats will not be built while errors present)\n":
             self.settings.background_color = [.5, 0, 0, 1]  # red
             errors[3] = 1
-        elif filecontent.find("Warnings: (Heats can be built while warnings present)") > -1:
+        elif filecontent[0] == "Warnings: (Heats can be built while warnings present)\n":
             self.settings.background_color = [.95, .9, 0, .77]  # Yellow
             errors[3] = 0
         else:
@@ -219,13 +260,13 @@ class freestylePlannerGuiApp(App):
         file = os.getcwd().replace('\src', "") + '\EventErrors.txt'
         with open(file) as f:
             filecontent = f.readlines()
-        self.event.content.add_widget(Label(text=filecontent))
-
+        # self.event.content.add_widget(Label(text=filecontent))
+        self.addlines(file, self.eventlayout)
         self.event.background_normal = ''
-        if filecontent != "" or filecontent.find("Errors: (Heats will not be built while errors present)") > -1:
+        if filecontent[0] == "Errors: (Heats will not be built while errors present)\n":
             self.event.background_color = [.5, 0, 0, 1]  # red
             errors[4] = 1
-        elif filecontent.find("Warnings: (Heats can be built while warnings present)") > -1:
+        elif filecontent[0] == "Warnings: (Heats can be built while warnings present)\n":
             self.event.background_color = [.95, .9, 0, .77]  # Yellow
             errors[4] = 0
         else:
@@ -251,3 +292,69 @@ class freestylePlannerGuiApp(App):
         wb = xw.Book(file)
         macro = wb.macro("Module1.ResetSettings")
         macro()
+
+    def addlines(self, file, layout, *args):
+        with open(file) as f:
+            # filecontent = f.read()
+            filecontent = f.readlines()
+
+        for x in filecontent:
+            # text align as per: https://stackoverflow.com/questions/47335100/text-align-in-left-in-boxlayout
+            single_error = Label(text=x.strip('\n'), size_hint_y=None, height=20, halign="left", valign="middle",
+                                 padding_x=5)  # .strip('\n')
+            # print("size ", self.layout.size, single_error.size, single_error.texture_size)
+            single_error.text_size = self.settingslayout.size
+            layout.add_widget(single_error)
+
+    def removelines(self):
+
+        self.settings.remove_widget(self.settingslayout)
+        self.settingslayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
+        self.settingslayout.bind(minimum_height=self.settingslayout.setter('height'))
+        self.settingscroll = ScrollView(size_hint=(1, 1), size=(self.settings.width, 100))
+        self.settingscroll.add_widget(self.settingslayout)
+        self.settings.content = self.settingscroll
+
+        # self.settingscroll.remove_widget(self.settingslayout)
+        # self.settingscroll = ScrollView(size_hint=(1, 1), size=(self.settings.width, 100))
+        # self.settingscroll.add_widget(self.settingslayout)
+        # self.settings.content = self.settingscroll
+
+        self.event.remove_widget(self.eventlayout)
+        self.eventlayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
+        self.eventlayout.bind(minimum_height=self.eventlayout.setter('height'))
+        self.eventscroll = ScrollView(size_hint=(1, 1), size=(self.event.width, 100))
+        self.eventscroll.add_widget(self.eventlayout)
+        self.event.content = self.eventscroll
+
+        self.singles.remove_widget(self.singleslayout)
+        self.singles = TabbedPanelHeader(text="Singles")
+        self.singleslayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
+        self.singleslayout.bind(minimum_height=self.singleslayout.setter('height'))
+        self.singlescroll = ScrollView(size_hint=(1, 1), size=(self.singles.width, 100))
+        self.singlescroll.add_widget(self.singleslayout)
+        self.singles.content = self.singlescroll
+
+        self.couples.remove_widget(self.coupleslayout)
+        self.couples = TabbedPanelHeader(text="Couples")
+        self.coupleslayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
+        self.coupleslayout.bind(minimum_height=self.coupleslayout.setter('height'))
+        self.couplescroll = ScrollView(size_hint=(1, 1), size=(self.couples.width, 100))
+        self.couplescroll.add_widget(self.coupleslayout)
+        self.couples.content = self.couplescroll
+
+        self.prolayout.remove_widget(self.prolayout)
+        self.pro = TabbedPanelHeader(text="Pro")
+        self.prolayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
+        self.prolayout.bind(minimum_height=self.prolayout.setter('height'))
+        self.proscroll = ScrollView(size_hint=(1, 1), size=(self.pro.width, 100))
+        self.proscroll.add_widget(self.prolayout)
+        self.pro.content = self.proscroll
+
+        self.instructors.remove_widget(self.instructorslayout)
+        self.instructors = TabbedPanelHeader(text="Instructors")
+        self.instructorslayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
+        self.instructorslayout.bind(minimum_height=self.instructorslayout.setter('height'))
+        instructorscroll = ScrollView(size_hint=(1, 1), size=(self.instructors.width, 100))
+        instructorscroll.add_widget(self.instructorslayout)
+        self.instructors.content = instructorscroll

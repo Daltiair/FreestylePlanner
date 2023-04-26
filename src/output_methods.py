@@ -93,6 +93,7 @@ def clearParticipantSheetCounts():
             if init.participantsheets.get(dancerf) is not None:
                 init.participantsheets[dancerf]["Count"] = 0
 
+
 def getUnsortedCount(dancer):
     unsorted_data_s = init.df_sing[init.df_sing[init.ev] > 0]
     unsorted_data_c = init.df_coup[init.df_coup[init.ev] > 0]
@@ -101,13 +102,13 @@ def getUnsortedCount(dancer):
     if unsorted_entry_s.empty:
         rawsing = 0
     else:
-        rawsing = unsorted_entry_s.loc[0, init.ev]
+        rawsing = unsorted_entry_s.loc[0, init.ev].sum()
 
     unsorted_entry_c = unsorted_data_c[(unsorted_data_c["Lead Dancer #"] == dancer) | (unsorted_data_c["Follow Dancer #"] == dancer)].reset_index(drop=True)
     if unsorted_entry_c.empty:
         rawcoup = 0
     else:
-        rawcoup = unsorted_entry_c.loc[0, init.ev]
+        rawcoup = unsorted_entry_c.loc[0, init.ev].sum()
     return rawcoup + rawsing
 
 
@@ -130,7 +131,8 @@ def appendParticipantSheet(div, syllabus, ev, roomid, roster_entry, heat, heatsl
     if div[0] == "S":
         eventlvls = heatslist.getEventLvlSingles()
         eventages = heatslist.getEventAgesSingles()
-    elif div[0] == "C":
+    # elif div[0] == "C":
+    else:
         eventlvls = heatslist.getEventLvlCouples()
         eventages = heatslist.getEventAgesCouples()
 

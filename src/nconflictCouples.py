@@ -4,9 +4,11 @@ import init
 from conflict import solvedLogic
 from debug import countInstances, checkheat
 from init import getNode, updateDanceDfs, buildInstTree
-from Structures import Heat, HeatList, ConflictLog, ConflictItemSingle, ResolverConflictItemSingle, ResolverConflictLog, \
-    ResolverConflictItemCouple
+from Structures import ConflictItemSingle, ResolverConflictItemSingle, ResolverConflictItemCouple
+from Heat import Heat, HeatList
+from ConflictLog import ConflictLog, ResolverConflictLog
 import traceback
+
 
 def ResolveNOrderCouples(log, resolverlog, order, heat, heat_list, roomid, instructors_available_for_heat, ev):
     resolverLogn = ResolverConflictLog()
