@@ -103,10 +103,15 @@ def selectionCouples(heat, heat_list, singles_index, c_floors, cfin_rooms, instr
                 resolve = resolveConflictCouples(roomid+singles_index, log, heat, heat_list, instructors_available_for_heat, init.ev)
                 dance_df = getNode(init.dance_dfs, room_info)
                 if init.debug:
-                    countInstances(heat, heat_list)
-                    for check in heat_list.getRostersList():
-                        checkheat(check)
-                    checkheat(heat)
+                    if init.count:
+                        countInstances(heat, heat_list)
+                    if init.inst:
+                        for level in instructors_available_for_heat:
+                            print(level)
+                    if init.check:
+                        for check in heat_list.getRostersList():
+                            checkheat(check)
+                        checkheat(heat)
                 if resolve == 1:
                     consecutive = 0
                 else:  # If failed to resolve

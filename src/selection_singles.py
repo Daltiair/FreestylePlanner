@@ -89,21 +89,25 @@ def selectionSingles(heat, heat_list, s_floors, sfin_rooms, instructors_availabl
                         print("Candidate placed: ")
                         init.logString += "\n" + "Candidate placed: "
                         print(candidate.loc[0, contestant_col], inst, 'room', roomid)
-                        init.logString += "\n" + str(candidate.loc[0, contestant_col]) + str(inst) + str('room') + str(
-                            roomid)
+                        init.logString += "\n" + str(candidate.loc[0, contestant_col]) + str(inst) + str('room') + str(roomid)
                         resetSolutionLogic()
-                        log.clearConflict(inst, -1)  # Clear the conflict from all rooms for this newply placed inst
+                        log.clearConflict(inst, -1)  # Clear the conflict from all rooms for this newly placed inst
                         # Remove the placed candidate from the df, or -1 if multi-entry
                         if candidate.loc[:, init.ev][0] == 1:
                             print("removing", candidate.loc[:, contestant_col][0], "from pool")
                             dance_df = dance_df.reset_index(drop=True)
                             dance_df = dance_df.drop(dance_df[dance_df[contestant_col] == candidate.loc[0, contestant_col]].index)
                         else:
-                            dance_df.loc[dance_df.loc[:, contestant_col] == candidate.loc[0, contestant_col], init.ev] = \
-                            candidate.loc[0, init.ev] - 1
+                            dance_df.loc[dance_df.loc[:, contestant_col] == candidate.loc[0, contestant_col], init.ev] = candidate.loc[0, init.ev] - 1
                         updateDanceDfs(init.dance_dfs, dance_df, room_info, room_info)
                         init.inst_tree = buildInstTree(init.dance_dfs, {}, init.ev)
                         inst_tree_node = getNode(init.inst_tree, room_info)
+                        # Check all instructors in the list
+                        for instructor in candidate.loc[0, "Instructor Dancer #'s"]:
+                            if inst_tree_node.get(instructor) is None:  # If this instructor is now gone
+                                log.clearRoomConflict(instructor, -1, roomid)
+                                if instructor in instructors_available_for_heat[roomid]:
+                                    instructors_available_for_heat[roomid].remove(instructor)
                         placed = True
                         # Check if current level df is empty after a placed candidate
                         if dance_df.empty:

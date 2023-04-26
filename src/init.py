@@ -15,14 +15,15 @@ eventName = 0
 
 # TODO DEBUG
 debug = False
-count = True
+count = False
 inst = False
-check = False
+check = True
 singles_only = False
 couples_only = False
 
 # Dynamic Event variables and Structures
 logString = ""
+eventdiv = []
 age_brackets = []
 dance_dfs = 0
 inst_tree = 0
@@ -60,7 +61,7 @@ participantsheetcols = {"Day": [], "Heat #": [], "Floor": [], "Partner #": [], "
                         "Syllabus": [], "Division": []}
 participantsheets = {}
 participantsheet_excelcols = ["A", "B", "C", "D", "E", "F", "G", "H"]
-participantsheet_exceldimensions = [9, 35, 9, 15, 18, 24, 9, 18]
+participantsheet_exceldimensions = [9, 35, 9, 15, 22, 24, 9, 18]
 participantsheet_excelalignments = ["right", "center", 'right', "right", 'center', 'center', 'center', 'center']
 # Heat sheets
 excelcols = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
@@ -79,7 +80,7 @@ def getNode(dance_dfs, div):
                 tmp = tmp[key]
         return tmp
     except Exception:
-        # print("Node does not exist", div)
+        print("Node does not exist", div)
         return {}
 
 

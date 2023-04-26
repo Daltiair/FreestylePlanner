@@ -2,7 +2,7 @@
 class Heat:
 
     # def __init__(self, key='', div=[], roster=[], holes=[], singles=[], instructors=[], couples=[]):
-    def __init__(self, key='', div=[], roster=[], holes=[], singles=[], instructors=[], couples=[]):
+    def __init__(self, key='', couples_per_floor=0, div=[], roster=[], holes=[], singles=[], instructors=[], couples=[]):
         # key = Genre-Syllabus-Dance-index
         self.key = key
         self.div = div
@@ -13,6 +13,7 @@ class Heat:
         self.instructors = instructors
         self.couples = couples
         self.singles_index = len(self.singles)
+        self.couples_per_floor = couples_per_floor
 
     def getRoster(self):
         return self.roster
@@ -37,6 +38,9 @@ class Heat:
 
     def getCouples(self):
         return self.couples
+
+    def getCouplesPerFloor(self):
+        return self.couples_per_floor
 
     def addEntry(self, entry, roomid):
 
@@ -69,14 +73,15 @@ class Heat:
         # print(tmp[['type id', "Lead Dancer #", "Follow Dancer #"]])
         # Insert the replacement
         if replacement_couple.loc[0, 'type id'] == "L":
-            print("adding", replacement_couple['Lead Dancer #'][0], replacement_couple["Follow Dancer #"][0])
+            print("adding", replacement_couple['Lead Dancer #'][0], replacement_couple["Follow Dancer #"][0], "Room", roomid, "Index", roster_index)
             self.singles[roomid].insert(roster_index, replacement_couple.loc[:, "Lead Dancer #"][0])
             self.instructors[roomid].insert(roster_index, replacement_couple.loc[:, "Follow Dancer #"][0])
         elif replacement_couple.loc[0, "type id"] == "F":
-            print("adding", replacement_couple["Follow Dancer #"][0], replacement_couple['Lead Dancer #'][0], )
+            print("adding", replacement_couple["Follow Dancer #"][0], replacement_couple['Lead Dancer #'][0], "Room", roomid, "Index", roster_index)
             self.singles[roomid].insert(roster_index, replacement_couple.loc[:, "Follow Dancer #"][0])
             self.instructors[roomid].insert(roster_index, replacement_couple.loc[:, "Lead Dancer #"][0])
         elif replacement_couple.loc[0, "type id"] == "C":
+            print("adding", replacement_couple['Lead Dancer #'][0], replacement_couple["Follow Dancer #"][0], "Room", roomid, "Index", roster_index)
             self.couples[roomid].insert(roster_index * 2, replacement_couple.loc[:, "Follow Dancer #"][0])
             self.couples[roomid].insert(roster_index * 2, replacement_couple.loc[:, "Lead Dancer #"][0])
 
@@ -95,6 +100,7 @@ class Heat:
             self.instructors[roomid].remove(tmp.loc[:, "Lead Dancer #"][0])
             # print(self.instructors[roomid], self.singles[roomid])
         elif tmp.loc[0, "type id"] == "C":
+            print("removing", tmp["Lead Dancer #"][0], tmp['Follow Dancer #'][0], "Room", roomid, "Index", roster_index)
             self.couples[roomid].remove(tmp.loc[:, "Follow Dancer #"][0])
             self.couples[roomid].remove(tmp.loc[:, "Lead Dancer #"][0])
 
@@ -112,15 +118,18 @@ class Heat:
             self.singles[roomid].remove(tmp.loc[:, "Lead Dancer #"][0])
             self.instructors[roomid].remove(tmp.loc[:, "Follow Dancer #"][0])
             if self.div[roomid][0] == "A":  # If and all type room, remove the -1
-                del self.couples[roomid][roster_index*2]  # Remove Lead -1
-                del self.couples[roomid][roster_index*2+1]  # Remove Follow -1
-                self.couples[roomid].append(-1)
+                # print(roster_index)
+                # print(self.couples[roomid])
+                del self.couples[roomid][(roster_index*2)+1]  # Remove Follow -1
+                del self.couples[roomid][roster_index * 2]  # Remove Lead -1
         elif tmp.loc[0, "type id"] == "F":
             self.singles[roomid].remove(tmp.loc[:, "Follow Dancer #"][0])
             self.instructors[roomid].remove(tmp.loc[:, "Lead Dancer #"][0])
             if self.div[roomid][0] == "A":  # If and all type room, remove the -1 noting this index was taken
-                del self.couples[roomid][roster_index*2]  # Remove Lead -1
-                del self.couples[roomid][roster_index*2+1]  # Remove Follow -1
+                # print(roster_index)
+                # print(self.couples[roomid])
+                del self.couples[roomid][(roster_index*2)+1]  # Remove Follow -1
+                del self.couples[roomid][roster_index * 2]  # Remove Lead -1
         elif tmp.loc[0, "type id"] == "C":
             self.couples[roomid].remove(tmp.loc[:, "Follow Dancer #"][0])
             self.couples[roomid].remove(tmp.loc[:, "Lead Dancer #"][0])

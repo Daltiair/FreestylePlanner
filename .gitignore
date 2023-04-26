@@ -3,4 +3,6 @@
 /.idea
 *.txt
 main.py
+conflictAll_CS.py
+conflictAll_SC.py
 ~$FreestyleEventPlannerInput.xlsm

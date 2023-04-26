@@ -7,8 +7,14 @@ from output import appendParticipantSheet
 
 def checkheat(heat):
 
+    for i, room in enumerate(heat.getRoster()):
+        if len(room) > heat.getCouplesPerFloor():
+            raise Exception("Roster count exceeds max number room", i, heat.getKey())
+
     for sing_room in heat.getSingles():
         for sing in sing_room:
+            if sing == -1:
+                continue
             counter = 0
             for each in heat.getSingles():
                 if sing in each:
@@ -16,13 +22,11 @@ def checkheat(heat):
                 if each.count(sing) > 1:
                     raise Exception("Multiple persons in this heat", sing, heat.getKey())
 
-
             for each in heat.getInstructors():
                 if sing in each:
                     counter += 1
                 if each.count(sing) > 1:
                     raise Exception(" Multiple persons in this heat", sing, heat.getKey())
-
 
             for each in heat.getCouples():
                 if sing in each:
@@ -35,6 +39,8 @@ def checkheat(heat):
 
     for inst_room in heat.getInstructors():
         for inst in inst_room:
+            if inst == -1:
+                continue
             counter = 0
 
             for each in heat.getSingles():
@@ -60,6 +66,8 @@ def checkheat(heat):
 
     for coup_room in heat.getCouples():
         for coup in coup_room:
+            if coup == -1:
+                continue
             counter = 0
 
             for each in heat.getSingles():
@@ -67,11 +75,13 @@ def checkheat(heat):
                     counter += 1
                 if each.count(coup) > 1:
                     raise Exception(" Multiple persons in this heat", coup, heat.getKey())
+
             for each in heat.getInstructors():
                 if coup in each:
                     counter += 1
                 if each.count(coup) > 1:
                     raise Exception(" Multiple persons in this heat", coup, heat.getKey())
+
             for each in heat.getCouples():
                 if coup in each:
                     counter += 1
@@ -113,14 +123,14 @@ def countInstances(heat, heat_list):
                     dancerf = entry.loc[0, fcontestant_col]
 
                 if init.participantsheets.get(dancer) is not None:  # If the entry is present
-                    pool_count = getPoolCount(prevheat, i, dancer, contestant_col)
+                    pool_count = getPoolCount(heat_list, dancer)
                     rawcount = getUnsortedCount(dancer, unsorted_data_s, unsorted_data_c)
                     if (init.participantsheets[dancer]["Count"] + pool_count) != rawcount:  # If not equal to the input form
                         print(dancer, "input entry count", init.participantsheets[dancer]["Count"], pool_count, "!= output sorted count", rawcount, "in event", init.ev)
 
                 if entry.loc[0, "type id"] == "C":
                     if init.participantsheets.get(dancerf) is not None:  # If the entry is present
-                        pool_count = getPoolCount(prevheat, i, dancerf, fcontestant_col)
+                        pool_count = getPoolCount(heat_list, dancerf)
                         rawcount = getUnsortedCount(dancerf, unsorted_data_s, unsorted_data_c)
                         if (init.participantsheets[dancerf]["Count"] + pool_count) != rawcount:  # If not equal to the input form
                             print(dancerf, "input entry count", init.participantsheets[dancerf]["Count"], pool_count,"!= output sorted count", rawcount, "in event", init.ev)
@@ -140,14 +150,14 @@ def countInstances(heat, heat_list):
                 dancerf = entry.loc[0, fcontestant_col]
 
             if init.participantsheets.get(dancer) is not None:  # If the entry is present
-                pool_count = getPoolCount(heat, i, dancer, contestant_col)
+                pool_count = getPoolCount(heat_list, dancer)
                 rawcount = getUnsortedCount(dancer, unsorted_data_s, unsorted_data_c)
                 if (init.participantsheets[dancer]["Count"] + pool_count) != rawcount:  # If not equal to the input form
                     print(dancer, "input entry count", init.participantsheets[dancer]["Count"], pool_count, "!= output sorted count", rawcount, "in event", init.ev)
 
             if entry.loc[0, "type id"] == "C":
                 if init.participantsheets.get(dancerf) is not None:  # If the entry is present
-                    pool_count = getPoolCount(heat, i, dancerf, fcontestant_col)
+                    pool_count = getPoolCount(heat_list, dancerf)
                     rawcount = getUnsortedCount(dancerf, unsorted_data_s, unsorted_data_c)
                     if (init.participantsheets[dancerf]["Count"] + pool_count) != rawcount:  # If not equal to the input form
                         print(dancerf, "input entry count", init.participantsheets[dancerf]["Count"], pool_count, "!= output sorted count", rawcount, "in event", init.ev)
@@ -160,56 +170,108 @@ def countInstances(heat, heat_list):
 def appendParticipantSheetdebug(div, syllabus, ev, roomid, roster_entry, heat, heatslist):
 
     typeid = roster_entry.loc[0, "type id"]
-    if typeid == "C":
-        leads_df = init.df_coup
-        follows_df = init.df_coup
-    elif typeid == "L":
-        leads_df = init.df_sing
-        follows_df = init.df_inst
-    elif typeid == "F":
-        leads_df = init.df_inst
-        follows_df = init.df_sing
+    # if typeid == "C":
+    #     leads_df = init.df_coup
+    #     follows_df = init.df_coup
+    # elif typeid == "L":
+    #     leads_df = init.df_sing
+    #     follows_df = init.df_inst
+    # elif typeid == "F":
+    #     leads_df = init.df_inst
+    #     follows_df = init.df_sing
 
     lead_col = "Lead Dancer #"
     follow_col = "Follow Dancer #"
 
     # Set Participant df data
     dancer = roster_entry.loc[0, lead_col]
-    partner = roster_entry.loc[0, follow_col]
-    partner_n = roster_entry.loc[0, "Follow First Name"] + " " + roster_entry.loc[0, "Follow Last Name"]
+    # partner = roster_entry.loc[0, follow_col]
+    # partner_n = roster_entry.loc[0, "Follow First Name"] + " " + roster_entry.loc[0, "Follow Last Name"]
     init.participantsheets[dancer]["Count"] += 1
 
     # Set Participant df data
     dancer = roster_entry.loc[0, follow_col]
-    partner = roster_entry.loc[0, lead_col]
-    partner_n = roster_entry.loc[0, "Lead First Name"] + " " + roster_entry.loc[0, "Lead Last Name"]
+    # partner = roster_entry.loc[0, lead_col]
+    # partner_n = roster_entry.loc[0, "Lead First Name"] + " " + roster_entry.loc[0, "Lead Last Name"]
     init.participantsheets[dancer]["Count"] += 1
 
 
-def getPoolCount(heat, roomid, dancer, dancer_col):
-    fake = heat.getDiv()[roomid].copy()
-    fake[0] = "S"
+def getPoolCount(heatlist, dancernum):
+    # Set up the fake key builder lists
+    if "l" in init.eventdiv or "L" in init.eventdiv:
+        lvls = heatlist.getEventLvlSingles()
+    else:
+        lvls = [-1]
 
-    node = getNode(init.dance_dfs, fake)
-    if isinstance(node, pd.DataFrame):
-        unit = node[node[dancer_col] == dancer].reset_index(drop=True)
+    if "a" in init.eventdiv or "A" in init.eventdiv:
+        ages = heatlist.getEventAgesSingles()
     else:
-        unit = pd.DataFrame()
-    if unit.empty:
-        pool_count = 0
-    else:
-        pool_count = unit.loc[0, init.ev]
+        ages = [-1]
 
-    fake[0] = "C"
-    node = getNode(init.dance_dfs, fake)
-    if isinstance(node, pd.DataFrame):
-        unit = node[node[dancer_col] == dancer].reset_index(drop=True)
+    if "s" in init.eventdiv or "S" in init.eventdiv:
+        singles = ["Lead", "Follow"]
     else:
-        unit = pd.DataFrame()
-    if unit.empty:
-        pool_count = pool_count + 0
+        singles = [-1]
+
+    if "t" in init.eventdiv or "T" in init.eventdiv:
+        types = ["S", "C"]
     else:
-        pool_count = pool_count + unit.loc[0, init.ev]
+        types = ["A"]
+    print("Counting", dancernum)
+    pool_count = 0
+    for ty in types:
+        fake = [ty]
+        for single in singles:
+            if single != -1:
+                fake.append(single)
+            for lvl in lvls:
+                if lvl != -1:
+                    fake.append(lvl)
+                for age in ages:
+                    if age != -1:
+                        fake.append(age)
+                    print(fake)
+                    node = getNode(init.dance_dfs, fake)
+                    if isinstance(node, pd.DataFrame):
+                        unit = node[(node["Lead Dancer #"] == dancernum) | (node["Follow Dancer #"] == dancernum)].reset_index(drop=True)
+                    else:
+                        unit = pd.DataFrame()
+
+                    if unit.empty:
+                        pool_count = pool_count + 0
+                    else:
+                        pool_count = pool_count + unit.loc[:, init.ev].sum()
+                    print(pool_count)
+                    if age != -1:
+                        del fake[-1]
+                if lvl != -1:
+                    del fake[-1]
+            if single != -1:
+                del fake[-1]
+        del fake[-1]
+
+
+    # fake[0] = "C"
+    # node = getNode(init.dance_dfs, fake)
+    # if isinstance(node, pd.DataFrame):
+    #     unit = node[(node["Lead Dancer #"] == dancer) | (node["Follow Dancer #"] == dancer)].reset_index(drop=True)
+    # else:
+    #     unit = pd.DataFrame()
+    # if unit.empty:
+    #     pool_count = pool_count + 0
+    # else:
+    #     pool_count = pool_count + unit.loc[0, init.ev].sum()
+    #
+    # fake[0] = "A"
+    # node = getNode(init.dance_dfs, fake)
+    # if isinstance(node, pd.DataFrame):
+    #     unit = node[(node["Lead Dancer #"] == dancer) | (node["Follow Dancer #"] == dancer)].reset_index(drop=True)
+    # else:
+    #     unit = pd.DataFrame()
+    # if unit.empty:
+    #     pool_count = pool_count + 0
+    # else:
+    #     pool_count = pool_count + unit[init.ev].sum()
 
     return pool_count
 

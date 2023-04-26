@@ -88,12 +88,14 @@ def buildEvent(heats, eventName):
                     else:
                         roomindex = 1
                         if roomid < (rooms - 1):
+                            # print("New Room at", index)
                             roomid += 1
                         else:
+                            # print("New Heat", heatiter +1 , "at", index)
                             roomid = 0
                             heatiter = heatiter + 1
                             # wb.save(filepath + excelfile)
-                    # If a non contestant data column, add identifier rows, text and color
+                    # If a non contestant data row, add identifier rows, text and color
                     if roomindex == 1 or (roomid == 0 and roomindex == 2):
                         if roomid == 0:
                             roommax = couples_per_floor + 3
@@ -105,10 +107,10 @@ def buildEvent(heats, eventName):
                                     print(index, heatiter, roomid, rowindex)
                             elif roomindex == 2:
                                 # Replace lvl # with it's corresponding name EX: AB, FB AS-FS
-                                try:
-                                    div = heatslist.getRostersList()[heatiter].getDiv()[roomid]
-                                except:
-                                    print(index, heatiter, roomid, rowindex)
+                                # try:
+                                div = heatslist.getRostersList()[heatiter].getDiv()[roomid]
+                                # except:
+                                #     print(index, heatiter, roomid, rowindex)
                                 if div == []:
                                     sheet[init.excelcols[0] + str(index)] = 'Floor ' + str(roomid + 1) + " Not used"  # ILLEGAL_CHARACTERS_RE.sub(r'', str(room))
                                     sheet[init.excelcols[0] + str(index)].fill = PatternFill("solid", start_color="a9ebba")
@@ -149,10 +151,10 @@ def buildEvent(heats, eventName):
                         elif roomid > 0 and roomindex == 1:
                             roommax = couples_per_floor + 1
                             # Replace lvl # with it's corresponding name EX: AB, FB AS-FS
-                            try:
-                                div = heatslist.getRostersList()[heatiter].getDiv()[roomid]
-                            except:
-                                print(index, heatiter, roomid, rowindex)
+                            # try:
+                            div = heatslist.getRostersList()[heatiter].getDiv()[roomid]
+                            # except:
+                            #     print(index, heatiter, roomid, rowindex)
                             if div == []:
                                 sheet[init.excelcols[0] + str(index)] = 'Floor ' + str(roomid + 1) + " Not used"  # ILLEGAL_CHARACTERS_RE.sub(r'', str(room))
                                 sheet[init.excelcols[0] + str(index)].fill = PatternFill("solid", start_color="a9ebba")
@@ -245,7 +247,8 @@ def buildEvent(heats, eventName):
     for each in participants:
         df = init.participantsheets[each]["Data"]
         # Create a new directory
-        filepath = os.getcwd().replace('\src', "") + "/Output" + "/" + "Personal Sheets" + "/" + str(each) + "/"
+        # filepath = os.getcwd().replace('\src', "") + "/Output" + "/" + "Personal Sheets" + "/" + str(each) + "/"
+        filepath = os.getcwd().replace('\src', "") + "/Output" + "/" + "Personal Sheets" + "/"
         # filepath = filepath.replace('\\', "/")
         try:
             os.makedirs(filepath)
@@ -272,7 +275,7 @@ def buildEvent(heats, eventName):
 
 def createZip():
     print("Creating zip file")
-    zipfile = init.eventName
+    zipfile = os.getcwd().replace('\src', "") + "/Output" + init.eventName
     outputfilepath = os.getcwd().replace('\src', "") + "/Output"
     shutil.make_archive(zipfile, 'zip', outputfilepath)
 

@@ -4,9 +4,9 @@ import init
 from conflict import solvedLogic
 from debug import countInstances, checkheat
 from init import getNode, updateDanceDfs, buildInstTree
+from Structures import ConflictItemSingle, ResolverConflictItemSingle, ResolverConflictItemCouple
 from Heat import Heat, HeatList
 from ConflictLog import ConflictLog, ResolverConflictLog
-from Structures import ConflictItemSingle, ConflictItemCouple, ResolverConflictItemSingle, ResolverConflictItemCouple
 import traceback
 
 

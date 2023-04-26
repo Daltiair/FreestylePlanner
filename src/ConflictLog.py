@@ -112,6 +112,44 @@ class ConflictLog:
                             self.roomlog[each]["mode_cont"][1] = 0
                     index -= 1
 
+    def clearRoomConflict(self, inst, contestants, roomid):
+        # If an instructor is involved in the solution
+        if inst != -1:
+            # Delete conflict from room involving instructor inst
+            index = len(self.roomlog[roomid]["conf_list"]) - 1
+            while index >= 0:  # reversed(self.roomlog[roomid]["conf_list"]):
+                if self.roomlog[roomid]["conf_list"][index].getType() != "S":  # If this is a single conflict, move to next index
+                    index -= 1
+                    continue
+                if self.roomlog[roomid]["conf_list"][index].getInstructor() == inst:
+                    # Remove from total
+                    self.roomlog[roomid]["total"] -= self.roomlog[roomid]["conf_count"][index]
+                    del self.roomlog[roomid]["conf_count"][index]  # delete the count with it as well
+                    del self.roomlog[roomid]["conf_list"][index]
+                    if inst in self.roomlog[roomid]["inst_list"]:
+                        self.roomlog[roomid]["inst_list"].remove(inst)
+                    if self.roomlog[roomid]["mode_inst"][0] == inst:
+                        self.roomlog[roomid]["mode_inst"][0] = 0
+                        self.roomlog[roomid]["mode_inst"][1] = 0
+                index -= 1
+        else:
+            index = len(self.roomlog[roomid]["conf_list"]) - 1
+            while index >= 0:
+                if self.roomlog[roomid]["conf_list"][index].getType() != "C":  # If this is a single conflict, move to next index
+                    index -= 1
+                    continue
+                if self.roomlog[roomid]["conf_list"][index].getLead() == contestants[0] and \
+                        self.roomlog[roomid]["conf_list"][index].getFollow() == contestants[1]:
+                    # Remove from total
+                    self.roomlog[roomid]["total"] -= self.roomlog[roomid]["conf_count"][index]
+                    del self.roomlog[roomid]["conf_count"][index]  # delete the count with it as well
+                    del self.roomlog[roomid]["conf_list"][index]
+                    if self.roomlog[roomid]["mode_cont"][0] == contestants[0]:
+                        self.roomlog[roomid]["mode_cont"][0] = 0
+                        self.roomlog[roomid]["mode_cont"][1] = 0
+                index -= 1
+
+
     def addRoom(self, newdiv):
         roomid = self.rooms
         self.rooms = len(self.div)

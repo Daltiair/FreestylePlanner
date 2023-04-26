@@ -1,4 +1,5 @@
 import init
+import math
 from init import *
 import random
 from Structures import ConflictItemCouple, ConflictItemSingle
@@ -10,6 +11,7 @@ from methods import backfill
 
 def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_available_for_heat, log_s, log_c, couples_per_floor, acceptablecouples):
     print("Selecting All Type")
+    # print("Starting inst", init.starting_instructors_for_heat)
     singles_in_heat = heat.getSingles()
     couples_in_heat = heat.getCouples()
     instructors_in_heat = heat.getInstructors()
@@ -26,6 +28,7 @@ def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_availabl
                 # init.logString += "\n" + "Room finished, fin code", str(sfin_rooms[roomid])
                 continue
             print('Selecting for room', roomid, room_info, heat_key)
+            # print(instructors_available_for_heat)
             placeable = False  # Set when a valid instructor/single pair is placed
             failed = False
             consecutive = 0  # Stops infinite loops on failed attempts to add candidate to the heat
@@ -47,11 +50,11 @@ def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_availabl
                     for i, selection in enumerate(singles_in_heat):
                         if selection.count(number) > 0:  # Check if Lead is being used in heat
                             dup_singl = True
-                            instl = singles_in_heat[i][selection.index(number)]
+                            instl = instructors_in_heat[i][selection.index(number)]
                             break
                         if selection.count(fnumber) > 0:  # Check if Follow is being used in heat
                             dup_singf = True
-                            instf = singles_in_heat[i][selection.index(fnumber)]
+                            instf = instructors_in_heat[i][selection.index(fnumber)]
                             break
                     # Check Instructors in heat
                     for selection in instructors_in_heat:
@@ -96,7 +99,6 @@ def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_availabl
                             break
                     if instructor_taken:
                         log_s.addConflict(ConflictItemSingle(1, inst), roomid)
-                        consecutive += 1
                     else:  # Find a single to pair with this instructor
                         # Loop over each row in the df for this level
                         df_shuffled = dance_df[dance_df["type id"] != "C"].sample(frac=1)
@@ -124,8 +126,11 @@ def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_availabl
                                         # If there is a couple causing a conflict with this single
                                         if rost.count(entry[contestant_col]) > 0:
                                             next_contestant = True
-                                            l = entry["Lead Dancer #"]
-                                            f = entry["Follow Dancer #"]
+                                            conflict_index = couples_in_heat[i].index(entry[contestant_col])
+                                            if math.fmod(conflict_index, 2) == 1:
+                                                conflict_index -= 1
+                                            l = couples_in_heat[i][conflict_index]
+                                            f = couples_in_heat[i][conflict_index+1]
                                             log_c.addConflict(ConflictItemCouple(1, l, f), roomid)
                                     for i, rost in enumerate(singles_in_heat):
                                         if rost.count(entry[contestant_col]) > 0:
@@ -154,22 +159,40 @@ def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_availabl
                         fcol = "Follow Dancer #"
                         # if last or only entry remove it from query_df
                         if candidate.loc[0, init.ev] == 1:
+                            if dance_df.loc[(dance_df.loc[:, col] == candidate.loc[0, col]) |
+                                            (dance_df.loc[:, fcol] == candidate.loc[0, fcol]) |
+                                            (dance_df.loc[:, col] == candidate.loc[0, fcol]) |
+                                            (dance_df.loc[:, fcol] == candidate.loc[0, col])].shape[0] > 1:
+                                pass
                             dance_df = dance_df.reset_index(drop=True)
                             dance_df = dance_df.drop(dance_df[(dance_df[col] == candidate.loc[0, col]) & (dance_df[fcol] == candidate.loc[0, fcol])].index)
                         else:
                             dance_df.loc[(dance_df.loc[:, col] == candidate.loc[0, col]) & (dance_df.loc[:, fcol] == candidate.loc[0, fcol]), init.ev] = candidate.loc[0, init.ev] - 1
                         updateDanceDfs(init.dance_dfs, dance_df, room_info, room_info)
+                        log_c.clearRoomConflict(-1, [number, fnumber], roomid)
+                        # log_c.clearConflict(-1, [number, fnumber])
                     else:  # If a single candidate
-                        print(candidate.loc[0, contestant_col], inst, 'room', roomid)
+                        print(candidate.loc[0, contestant_col], inst, 'room', roomid, room_info, heat_key)
+                        if dance_df.loc[(dance_df.loc[:, contestant_col] == candidate.loc[0, contestant_col]) | (dance_df.loc[:, inst_col] == candidate.loc[0, contestant_col])].shape[0] > 1:
+                            pass
                         if candidate.loc[:, init.ev][0] == 1:
                             print("removing", candidate.loc[:, contestant_col][0], "from pool")
                             dance_df = dance_df.reset_index(drop=True)
-                            dance_df = dance_df.drop(dance_df[dance_df[contestant_col] == candidate.loc[0, contestant_col]].index)
+                            dance_df = dance_df.drop(dance_df[(dance_df[contestant_col] == candidate.loc[0, contestant_col]) & (dance_df["type id"] != "C")].index)
                         else:
-                            dance_df.loc[dance_df.loc[:, contestant_col] == candidate.loc[0, contestant_col], init.ev] = candidate.loc[0, init.ev] - 1
+                            dance_df.loc[(dance_df.loc[:, contestant_col] == candidate.loc[0, contestant_col]) & (dance_df["type id"] != "C"), init.ev] = candidate.loc[0, init.ev] - 1
                         updateDanceDfs(init.dance_dfs, dance_df, room_info, room_info)
+                        instructors_available_for_heat[roomid].remove(inst)
                         init.inst_tree = buildInstTree(init.dance_dfs, {}, init.ev)
                         inst_tree_node = getNode(init.inst_tree, room_info)
+                        log_s.clearRoomConflict(inst, -1, roomid)
+                        # log_s.clearConflict(instructor, -1)
+                        # Check all instructors in this contestant list
+                        for instructor in candidate.loc[0, "Instructor Dancer #'s"]:
+                            if inst_tree_node.get(instructor) is None:  # If this instructor is now gone
+                                log_s.clearRoomConflict(instructor, -1, roomid)
+                                if instructor in instructors_available_for_heat[roomid]:
+                                    instructors_available_for_heat[roomid].remove(instructor)
                     # Check if current df is empty after adding the candidate
                     if dance_df.empty:
                         print("Division Empty", room_info)
@@ -181,6 +204,8 @@ def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_availabl
                 if consecutive >= init.max_conflicts:
                     resolve = resolveConflictAll(roomid, log_s, log_c, heat, heat_list, instructors_available_for_heat, init.ev)
                     dance_df = getNode(init.dance_dfs, room_info)
+                    init.inst_tree = buildInstTree(init.dance_dfs, {}, init.ev)
+                    inst_tree_node = getNode(init.inst_tree, room_info)
                     # Check if any instructors lists are now empty
                     for i, room in enumerate(instructors_available_for_heat):
                         if room != []:  # If instructors for heat not empty do nothing
@@ -199,10 +224,15 @@ def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_availabl
                         # else:
                         #     afin_rooms[i] = 1
                     if init.debug:
-                        countInstances(heat, heat_list)
-                        for check in heat_list.getRostersList():
-                            checkheat(check)
-                        checkheat(heat)
+                        if init.count:
+                            countInstances(heat, heat_list)
+                        if init.inst:
+                            for level in instructors_available_for_heat:
+                                print(level)
+                        if init.check:
+                            for check in heat_list.getRostersList():
+                                checkheat(check)
+                            checkheat(heat)
                     if resolve == 1:
                         failed = False
                         consecutive = 0
@@ -222,7 +252,8 @@ def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_availabl
                     afin_rooms[roomid] = 1
                 if len(instructors_available_for_heat[roomid]) == 0:
                     print("Instructors for", room_info, "all gone")
-                    if len(heat_roster[roomid]) < couples_per_floor and dance_df.shape[0] >= 1:
+                    # If not optimal # and no Couples left
+                    if len(heat_roster[roomid]) < couples_per_floor and dance_df[dance_df["type id"] == "C"].shape[0] == 0:
                         print("Adding Instructors back in, may only have a few available")
                         before_reload = instructors_available_for_heat[roomid].copy()
                         instructors_available_for_heat[roomid] = list(inst_tree_node.keys())
@@ -238,7 +269,6 @@ def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_availabl
                 if afin_rooms[roomid] > 0 and dance_df[init.ev].sum() < acceptablecouples:
                     if dance_df.shape[0] != 0 and heat_list.getDivisionHoleCount(room_info) > 0:
                         backfill(dance_df, room_info, heat_list, couples_per_floor, init.ev)
-                        updateDanceDfs(init.dance_dfs, dance_df, room_info, room_info)
                         deleteEmpty(init.dance_dfs)
                         if init.debug:
                             if init.count:
@@ -256,6 +286,6 @@ def selectionAlltype(heat, heat_list, a_floors, afin_rooms, instructors_availabl
                     for i, info in enumerate(afin_rooms):
                         if afin_rooms[i] == 0:
                             afin_rooms[i] = 1
-                # Determine if heat finished
-                if (afin_rooms.count(1) + afin_rooms.count(2)) == len(a_floors):
-                    break
+        # Determine if heat finished
+        if (afin_rooms.count(1) + afin_rooms.count(2)) == len(a_floors):
+            break
