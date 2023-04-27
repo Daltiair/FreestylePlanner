@@ -15,6 +15,8 @@ def buildEvent(heats, eventName):
     # file = os.getcwd() + eventName + '.xlsx'
     print()
     print("Printing Heats")
+    filepath = os.getcwd().replace('\src', "") + "/Output"
+    shutil.rmtree(filepath)
     for each in heats:  # For each genre
         # wb.remove_sheet(wb.get_sheet_names()[0])
         for every in heats[each]:  # For every syllabus category
@@ -275,8 +277,9 @@ def buildEvent(heats, eventName):
 
 def createZip():
     print("Creating zip file")
-    zipfile = os.getcwd().replace('\src', "") + "/Output" + init.eventName
+    zipfile = os.getcwd().replace('\src', "") + "\Output"+ "\Output_" + init.eventName
     outputfilepath = os.getcwd().replace('\src', "") + "/Output"
+    # print(zipfile)
     shutil.make_archive(zipfile, 'zip', outputfilepath)
 
 

@@ -85,6 +85,9 @@ def PoachPrevHeatsSingles(roomid, div, heat, heatlist, acceptablecouples):
             for poach in reversed(poachlist):
                 if heatlen == acceptablecouples:
                     return
+                if len(poachlist) == 0:  # if poach list is empty go back a look for more to poach
+                    counter = 2
+                    break
                 # poach = random.choice(poachlist)
                 heat2poach = heatlist.getRostersList()[poach[0]]
                 # Check if either are in Heat already
@@ -191,6 +194,9 @@ def PoachPrevHeatsCouples(roomid, div, heat, heatlist, acceptablecouples):
             for poach in reversed(poachlist):
                 if heatlen == acceptablecouples:
                     return
+                if len(poachlist) == 0:  # if poach list is empty go back a look for more to poach
+                    counter = 2
+                    break
                 # poach = random.choice(poachlist)
                 heat2poach = heatlist.getRostersList()[poach[0]]
                 # Check if either are in Heat already
@@ -206,7 +212,7 @@ def PoachPrevHeatsCouples(roomid, div, heat, heatlist, acceptablecouples):
                     print(heat.getCouples()[roomid][-2], heat.getCouples()[roomid][-1])
                     couples_list.append(heat.getCouples()[roomid][-2])
                     couples_list.append(heat.getCouples()[roomid][-1])
-                elif counter >= 1 and len(heat2poach.getRoster()[poach[1]]) >= acceptablecouples:
+                elif counter >= 1 and len(heat2poach.getRoster()[poach[1]]) > acceptablecouples:
                     # Check if either are in Heat already
                     print("Contestants", heat2poach.getCouples()[poach[1]][poach[2]], heat2poach.getCouples()[poach[1]][poach[2]+1], "stolen from heat, room", poach[0], poach[1])
                     tmp = heat2poach.stealEntry(poach[1], int(poach[2]/2))
@@ -434,7 +440,7 @@ def PoachPrevHeatsAll(roomid, div, heat, heatlist, acceptablecouples):
                         heatlen += 1
                         singles_list.append(heat.getSingles()[roomid][-1])
                         instructors_list.append(heat.getInstructors()[roomid][-1])
-                elif counter >= 1 and len(heat2poach.getRoster()[poach[1]]) >= acceptablecouples:
+                elif counter >= 1 and len(heat2poach.getRoster()[poach[1]]) > acceptablecouples:
                     if couple:
                         print("Contestants", heat2poach.getCouples()[poach[1]][poach[2]], heat2poach.getCouples()[poach[1]][poach[2] + 1], "stolen from heat, room", poach[0], poach[1])
                         tmp = heat2poach.stealEntry(poach[1], int(poach[2] / 2))

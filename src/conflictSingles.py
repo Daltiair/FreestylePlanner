@@ -299,9 +299,6 @@ def resolveConflictSingles(roomid, dance_df, log, heat, heat_list, instructors_a
                     inst2sing_node = getNode(init.inst2sing_tree, heat.getDiv()[roomid])
                     inst_tree_node = getNode(init.inst_tree, heat.getDiv()[roomid])
                     print(inst2sing_node, heat.getDiv()[roomid])
-                    if inst2sing_node.get(free_inst) is None:
-                        print("Instructor has no contestants free, check why it is in the conflicts")
-                        continue
                     possible_matches = inst2sing_node[free_inst]
                     for each in possible_matches:
                         # For every room

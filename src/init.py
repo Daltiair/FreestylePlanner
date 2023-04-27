@@ -14,7 +14,7 @@ max_heats = 0
 eventName = 0
 
 # TODO DEBUG
-debug = False
+debug = True
 count = False
 inst = False
 check = True
