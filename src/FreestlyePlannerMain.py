@@ -8,7 +8,7 @@ import sys
 from methods import *
 from output import *
 from selection import *
-from gui import *
+# from gui import *
 import getpass
 import hashlib
 
@@ -22,8 +22,8 @@ def startProcess(instance):
     #     print(e)
 
 if __name__ == '__main__':
-    freestylePlannerGuiApp().run()
-    # startProcess([])
+    # freestylePlannerGuiApp().run()
+    startProcess([])
     # hash = hashlib.sha512()
     # while True:
     #     if "PlannerBypass" in os.environ:

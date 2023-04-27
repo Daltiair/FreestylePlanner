@@ -13,8 +13,8 @@ import traceback
 
 def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instructors_available_for_heat, ev):
 
-    resolverLog = ResolverConflictLog()
-    resolverLog_c = ResolverConflictLog()
+    resolverlog_s = ResolverConflictLog()
+    resolverlog_c = ResolverConflictLog()
     singles_in_heat = heat.getSingles()
     instructors_in_heat = heat.getInstructors()
     if init.debug:
@@ -126,7 +126,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                                                                   singles_in_heat, possible_inst, conflict,
                                                                                   [])
                                     nconflict_counter += 1
-                                    resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
+                                    resolverlog_s.addConflict(resolverconflict, con_num, nconflict_counter)
                                     print(nconflict_counter, 'Internal Conflict with Inst', possible_inst, "div", nconflict_div)
                     # Check if conflict can be swapped with an entry in a previous heat
                     # loop heat_list and check metadata
@@ -156,7 +156,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                                                           nconflict_index, instructors_in_heat,
                                                                           singles_in_heat, conflict_inst, conflict, swapper)
                             nconflict_counter += 1
-                            resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
+                            resolverlog_s.addConflict(resolverconflict, con_num, nconflict_counter)
                             print(nconflict_counter, "external conflict with heat,room,index", heat_index, nconflict_room,
                                   nconflict_index, "instructor", conflict_inst, "div", nconflict_div)
                             dup = True
@@ -179,7 +179,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                                                           singles_in_heat, conflict_contestant, conflict,
                                                                           swapper)
                             nconflict_counter += 1
-                            resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
+                            resolverlog_s.addConflict(resolverconflict, con_num, nconflict_counter)
                             print(nconflict_counter, "external conflict with heat,room,index", heat_index, nconflict_room,
                                   nconflict_index, "contestant", conflict_contestant, 'div', nconflict_div)
                             dup = True
@@ -201,7 +201,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                                                           singles_in_heat, conflict_contestant, conflict,
                                                                           swapper)
                             nconflict_counter += 1
-                            resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
+                            resolverlog_s.addConflict(resolverconflict, con_num, nconflict_counter)
                             print(nconflict_counter, "external conflict with heat,room,index", heat_index, nconflict_room,
                                   nconflict_index, "contestant", conflict_contestant, 'div', nconflict_div)
                             dup = True
@@ -235,7 +235,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                         # Conflict to check the og heat entry nth conflict
                                         # TODO I think checking the OG entry may cause an issue or unneeded checks because changing the initial conflict could make the solution invalid
                                         # resolverconflict = ResolverConflictItemSingle(4, nconflict_div, -1, nconflict_room, nconflict_index, placed_inst[swapping_room], placed_sing[swapping_room], contestant, conflict, [])
-                                        # resolverLog.addConflict(resolverconflict)
+                                        # resolverlog_s.addConflict(resolverconflict)
                                         # conflict to check the previous heat entry nth conflict
                                         resolverconflict = ResolverConflictItemSingle(4, conflict_div, heat_index,
                                                                                       swapping_room,
@@ -243,7 +243,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                                                                       singles_in_heat, contestant, conflict,
                                                                                       [swapper, swappee])
                                         nconflict_counter += 1
-                                        resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
+                                        resolverlog_s.addConflict(resolverconflict, con_num, nconflict_counter)
                                         print(nconflict_counter, "Swappee conflict in heat,room,index", heat_index,
                                               swapping_room, placed_sing[swapping_room].index(contestant), "contestant",
                                               contestant)
@@ -260,7 +260,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                                                                       placed_inst[swapping_room],
                                                                                       placed_sing[swapping_room], inst,
                                                                                       conflict, [swapper, swappee])
-                                        resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
+                                        resolverlog_s.addConflict(resolverconflict, con_num, nconflict_counter)
                                         # conflict to check the previous heat entry nth conflict
                                         resolverconflict = ResolverConflictItemSingle(3, conflict_div, heat_index,
                                                                                       swapping_room,
@@ -268,7 +268,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                                                                           inst), instructors_in_heat,
                                                                                       singles_in_heat, inst, conflict,
                                                                                       [swapper, swappee])
-                                        resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
+                                        resolverlog_s.addConflict(resolverconflict, con_num, nconflict_counter)
                                         print(nconflict_counter, "Swappee conflict in heat,room,index", heat_index,
                                               swapping_room,
                                               placed_inst[swapping_room].index(inst), 'inst', inst)
@@ -285,7 +285,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                                                                       placed_sing[swapping_room],
                                                                                       contestant, conflict,
                                                                                       [swapper, swappee])
-                                        resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
+                                        resolverlog_s.addConflict(resolverconflict, con_num, nconflict_counter)
                                     if inst in couples:
                                         dup = True
                                         raise Exception("Instructor is in Couple list", inst)
@@ -459,7 +459,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                                                               nconflict_index, instructors_in_heat,
                                                                               singles_in_heat, conflict_inst, conflict,
                                                                               [check_in_heat, free_inst, swapper])
-                                resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
+                                resolverlog_s.addConflict(resolverconflict, con_num, nconflict_counter)
                                 print(nconflict_counter, "external conflict with heat,room,index", heat_index,
                                       nconflict_room, nconflict_index, "instructor", conflict_inst, 'div', nconflict_div)
                                 dup = True
@@ -482,7 +482,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                                                               nconflict_index, instructors_in_heat,
                                                                               singles_in_heat, conflict_contestant,
                                                                               conflict, [check_in_heat, free_inst, swapper])
-                                resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
+                                resolverlog_s.addConflict(resolverconflict, con_num, nconflict_counter)
                                 print(nconflict_counter, "external conflict with heat,room,index", heat_index,
                                       nconflict_room, nconflict_index, "contestant", conflict_contestant, "div",
                                       nconflict_div)
@@ -505,7 +505,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                                                               nconflict_index, instructors_in_heat,
                                                                               singles_in_heat, conflict_contestant,
                                                                               conflict, [check_in_heat, free_inst, swapper])
-                                resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
+                                resolverlog_s.addConflict(resolverconflict, con_num, nconflict_counter)
                                 print(nconflict_counter, "external conflict with heat,room,index", heat_index,
                                       nconflict_room, nconflict_index, "contestant", conflict_contestant, "div",
                                       nconflict_div)
@@ -549,7 +549,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                                                                           contestant, conflict,
                                                                                           [swapper, swappee, check_in_heat,
                                                                                            free_inst])
-                                            resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
+                                            resolverlog_s.addConflict(resolverconflict, con_num, nconflict_counter)
                                             # To check prev heat with nth conflict
                                             resolverconflict = ResolverConflictItemSingle(4, conflict_div, heat_index,
                                                                                           swapping_room,
@@ -558,7 +558,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                                                                           singles_in_heat, contestant,
                                                                                           conflict,
                                                                                           [swapper, swappee, check_in_heat, free_inst])
-                                            resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
+                                            resolverlog_s.addConflict(resolverconflict, con_num, nconflict_counter)
                                             print(nconflict_counter, "Swappee conflict in heat,room,index", heat_index,
                                                   swapping_room, placed_sing[swapping_room].index(contestant), "contestant",
                                                   contestant)
@@ -571,7 +571,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                             # Confclit to check og heat of nth conflict
                                             # nconflict_counter += 1
                                             # resolverconflict = ResolverConflictItemSingle(3, nconflict_div, -1, nconflict_room, nconflict_index, placed_inst[swapping_room], placed_sing[swapping_room], inst, conflict, [check_in_heat, free_inst])
-                                            # resolverLog.addConflict(resolverconflict)
+                                            # resolverlog_s.addConflict(resolverconflict)
                                             # To check prev heat with nth conflict
                                             nconflict_counter += 1
                                             resolverconflict = ResolverConflictItemSingle(3, conflict_div, heat_index,
@@ -579,7 +579,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                                                                           placed_inst[swapping_room].index(inst), instructors_in_heat,
                                                                                           singles_in_heat, inst, conflict,
                                                                                           [swapper, swappee, check_in_heat, free_inst])
-                                            resolverLog.addConflict(resolverconflict, con_num, nconflict_counter)
+                                            resolverlog_s.addConflict(resolverconflict, con_num, nconflict_counter)
                                             print(nconflict_counter, "Swappee conflict in heat,room,index", heat_index,
                                                   swapping_room, placed_inst[swapping_room].index(inst), "instructor", inst)
                                     for j, couples in enumerate(heat.getCouples()):
@@ -596,7 +596,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                                                                           placed_sing[swapping_room],
                                                                                           contestant, conflict,
                                                                                           [swapper, swappee, check_in_heat, free_inst])
-                                            resolverLog_c.addConflict(resolverconflict, con_num, nconflict_counter)
+                                            resolverlog_c.addConflict(resolverconflict, con_num, nconflict_counter)
                                         if inst in couples:
                                             dup = True
                                             raise Exception("Instructor is in Couple list", inst)
@@ -645,7 +645,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
             init.solution[order] = 1
         if init.solved[order] == -1:  # Termination after solution number reaches max
             return -1
-        resolve = ResolveNOrderSingles(log_s, resolverLog, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
+        resolve = ResolveNOrderSingles(log_s, resolverlog_s, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
         dance_df = getNode(init.dance_dfs, heat.getDiv()[roomid])  # Update dance_df from a potential nth change
         if init.debug:
             if init.count:
@@ -659,35 +659,35 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                 checkheat(heat)
         if resolve != -1:
             nordersolved = True
-            resolverLog.clearConflicts()
+            resolverlog_s.clearConflicts()
         else:
             return -1
         # Try to solve N order singles with singles
-        # resolve = ResolveNOrderAllSS(log, resolverLog, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
+        # resolve = ResolveNOrderAllSS(log, resolverlog_s, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
         # if resolve != -1:
         #     nordersolved = True
-        #     resolverLog.clearConflicts()
+        #     resolverlog_s.clearConflicts()
         #     resolverLog_c.clearConflicts()
         # # If there are N order couples conflicts try to solve them with couples
         # elif len(resolverLog_c.getRoomlog()["conf_list"]) > 0:
         #     resolve = ResolveNOrderAllCC(log, resolverLog_c, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
         #     if resolve != -1:
         #         nordersolved = True
-        #         resolverLog.clearConflicts()
+        #         resolverlog_s.clearConflicts()
         #         resolverLog_c.clearConflicts()
         #     # If there are N order singles conflicts try to solve them with couples
         #     else:
-        #         resolve = ResolveNOrderAllSC(log, resolverLog, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
+        #         resolve = ResolveNOrderAllSC(log, resolverlog_s, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
         #         if resolve != -1:
         #             nordersolved = True
-        #             resolverLog.clearConflicts()
+        #             resolverlog_s.clearConflicts()
         #             resolverLog_c.clearConflicts()
         #         # If there are N order Couples conflicts try to solve them with Singles
         #         elif len(resolverLog_c.getRoomlog()["conf_list"]) > 0:
-        #             resolve = ResolveNOrderAllCS(log, resolverLog, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
+        #             resolve = ResolveNOrderAllCS(log, resolverlog_s, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
         #             if resolve != -1:
         #                 nordersolved = True
-        #                 resolverLog.clearConflicts()
+        #                 resolverlog_s.clearConflicts()
         #                 resolverLog_c.clearConflicts()
         #             else:
         #                 return -1
@@ -695,11 +695,10 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
         #             return -1
         # # If there are N order singles conflicts try to solve them with couples
         # else:
-        #     resolve = ResolveNOrderAllSC(log, resolverLog, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
+        #     resolve = ResolveNOrderAllSC(log, resolverlog_s, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
         #     if resolve != -1:
         #         nordersolved = True
-        #         resolverLog.clearConflicts()
+        #         resolverlog_s.clearConflicts()
         #         resolverLog_c.clearConflicts()
         #     else:
         #         return -1
-        return -1

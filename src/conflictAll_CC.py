@@ -257,7 +257,7 @@ def resolveConflictAllCC(roomid, log_s, log_c, heat, heat_list, instructors_avai
         # If the next order has not been attempted yet, stops resetting solution if stuck between orders
         if init.solution[order] == 0:
             init.solution[order] = 1
-        return -1
+        resolve = ResolveNOrderCouples(log_c, resolverLog_c, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
             # Try to solve N order couples with couples
             # resolve = ResolveNOrderAllCC(log, resolverLog, order + 1, heat, heat_list, roomid, instructors_available_for_heat, ev)
             # if resolve != -1:
@@ -309,4 +309,8 @@ def resolveConflictAllCC(roomid, log_s, log_c, heat, heat_list, instructors_avai
                 for check in heat_list.getRostersList():
                     checkheat(check)
                 checkheat(heat)
-
+        if resolve != -1:
+            nordersolved = True
+            resolverLog_c.clearConflicts()
+        else:
+            return -1
