@@ -15,7 +15,7 @@ def buildEvent(heats, eventName):
     # file = os.getcwd() + eventName + '.xlsx'
     print()
     print("Printing Heats")
-    filepath = os.getcwd().replace('\src', "") + "/Output"
+    filepath = os.getcwd().replace('\src', "") + "\Output"
     shutil.rmtree(filepath)
     for each in heats:  # For each genre
         # wb.remove_sheet(wb.get_sheet_names()[0])
@@ -24,7 +24,7 @@ def buildEvent(heats, eventName):
             if events == []:
                 continue
             # Create a new directory
-            filepath = os.getcwd().replace('\src', "") + "/Output" + "/" + str(each) + "/" + str(every) + "/"
+            filepath = os.getcwd().replace('\src', "") + "\Output" + "\\" + str(each) + "\\" + str(every) + "\\"
             # filepath = filepath.replace('\\', "/")
             try:
                 os.makedirs(filepath)

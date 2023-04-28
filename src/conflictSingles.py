@@ -205,6 +205,10 @@ def resolveConflictSingles(roomid, dance_df, log, heat, heat_list, instructors_a
                             index_2_swap = -1
                             for contestant, inst in zip(placed_sing[swapping_room], placed_inst[swapping_room]):
                                 swappee = [heat_index, swapping_room, index_iter]
+                                # If the entry is a 'blank space' skip over it
+                                if contestant == -1 and inst == -1:
+                                    index_iter += 1
+                                    continue
                                 for i, singles in enumerate(heat.getSingles()):
                                     if contestant in singles and contestant != conflict_contestant: # make sure the conflict is not because it has some inst trying to be freed
                                         dup = True
@@ -475,6 +479,10 @@ def resolveConflictSingles(roomid, dance_df, log, heat, heat_list, instructors_a
                                         if inst != free_inst:  # If the instructor is also the one trying to be use it will solve nothing
                                             index_iter += 1
                                             continue
+                                    # If the entry is a 'blank space' skip over it
+                                    if contestant == -1 and inst == -1:
+                                        index_iter += 1
+                                        continue
                                     swappee = [heat_index, swapping_room, index_iter]
                                     for j, singles in enumerate(heat.getSingles()):
                                         if contestant in singles:

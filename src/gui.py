@@ -20,7 +20,12 @@ from FreestlyePlannerMain import startProcess
 class freestylePlannerGuiApp(App):
 
     def build(self):
-        self.ran = False
+        self.settingslist = []
+        self.eventlist = []
+        self.singleslist = []
+        self.coupleslist = []
+        self.instructorslist = []
+
         self.window = BoxLayout(spacing=10, orientation='vertical', size_hint=(0.8, 0.8) )
         self.window.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
         self.buttons = GridLayout(spacing=10)
@@ -77,12 +82,12 @@ class freestylePlannerGuiApp(App):
         self.couplescroll.add_widget(self.coupleslayout)
         self.couples.content = self.couplescroll
         
-        self.pro = TabbedPanelHeader(text="Pro")
-        self.prolayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
-        self.prolayout.bind(minimum_height=self.prolayout.setter('height'))
-        self.proscroll = ScrollView(size_hint=(1, 1), size=(self.pro.width, 100))
-        self.proscroll.add_widget(self.prolayout)
-        self.pro.content = self.proscroll
+        # self.pro = TabbedPanelHeader(text="Pro")
+        # self.prolayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
+        # self.prolayout.bind(minimum_height=self.prolayout.setter('height'))
+        # self.proscroll = ScrollView(size_hint=(1, 1), size=(self.pro.width, 100))
+        # self.proscroll.add_widget(self.prolayout)
+        # self.pro.content = self.proscroll
         
         self.instructors = TabbedPanelHeader(text="Instructors")
         self.instructorslayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
@@ -118,7 +123,7 @@ class freestylePlannerGuiApp(App):
         self.tb_panel.add_widget(self.event)
         self.tb_panel.add_widget(self.singles)
         self.tb_panel.add_widget(self.couples)
-        self.tb_panel.add_widget(self.pro)
+        # self.tb_panel.add_widget(self.pro)
         self.tb_panel.add_widget(self.instructors)
 
         self.window.add_widget(self.tb_panel)
@@ -163,8 +168,6 @@ class freestylePlannerGuiApp(App):
         Validate() will go over all entered data and make sure there are no
         """
         # Open excel wb, run the macro, and save the wb
-        # self.removelines()
-
         file = os.getcwd().replace('\src', "") + '\FreestyleEventPlannerInput.xlsm'
 
         self.runbutton.disabled = True
@@ -179,17 +182,8 @@ class freestylePlannerGuiApp(App):
         with open(file) as f:
             filecontent = f.readlines()
 
-        # if self.ran is True:
-        #     self.singles.content.remove_widget()
-        # scroll = ScrollView()
-        # scroll.add_widget(Label(text=filecontent))
-        # self.singles.content = scroll
-        self.addlines(file, self.singleslayout)
-
-        # view = ScrollView(size_hint=(self.singles.width, None), size=(self.tb_panel.width, self.tb_panel.height),
-        #            do_scroll_y=True, pos_hint={'left': 1})
-        # view.add_widget(Label(text=filecontent, size_hint=(None,None), size=self.singles.texture_size))
-        # self.singles.content.add_widget(view)
+        self.removelines(self.singleslayout, self.singleslist)
+        self.addlines(file, self.singleslayout, self.singleslist)
 
         self.singles.background_normal = ''
         # if filecontent != "" or filecontent.find("Errors: (Heats will not be built while errors present)") > -1:
@@ -209,7 +203,8 @@ class freestylePlannerGuiApp(App):
             filecontent = f.readlines()
         # self.couples.content.ScrollView.Label(text=filecontent)
 
-        self.addlines(file, self.coupleslayout)
+        self.removelines(self.coupleslayout, self.coupleslist)
+        self.addlines(file, self.coupleslayout, self.coupleslist)
 
         self.couples.background_normal = ''
         if filecontent[0] == "Errors: (Heats will not be built while errors present)\n":
@@ -227,7 +222,9 @@ class freestylePlannerGuiApp(App):
         with open(file) as f:
             filecontent = f.readlines()
         # self.instructors.content.add_widget(Label(text=filecontent))
-        self.addlines(file, self.instructorslayout)
+        self.removelines(self.instructorslayout, self.instructorslist)
+        self.addlines(file, self.instructorslayout, self.instructorslist)
+
         self.instructors.background_normal = ''
         if filecontent[0] == "Errors: (Heats will not be built while errors present)\n":
             self.instructors.background_color = [.5, 0, 0, 1]  # red
@@ -244,7 +241,9 @@ class freestylePlannerGuiApp(App):
         with open(file) as f:
             filecontent = f.readlines()
         # self.settings.content.add_widget(Label(text=filecontent))
-        self.addlines(file, self.settingslayout)
+        self.removelines(self.settingslayout, self.settingslist)
+        self.addlines(file, self.settingslayout, self.settingslist)
+
         self.settings.background_normal = ''
         if filecontent[0] == "Errors: (Heats will not be built while errors present)\n":
             self.settings.background_color = [.5, 0, 0, 1]  # red
@@ -261,7 +260,9 @@ class freestylePlannerGuiApp(App):
         with open(file) as f:
             filecontent = f.readlines()
         # self.event.content.add_widget(Label(text=filecontent))
-        self.addlines(file, self.eventlayout)
+        self.removelines(self.eventlayout, self.eventlist)
+        self.addlines(file, self.eventlayout, self.eventlist)
+
         self.event.background_normal = ''
         if filecontent[0] == "Errors: (Heats will not be built while errors present)\n":
             self.event.background_color = [.5, 0, 0, 1]  # red
@@ -293,7 +294,7 @@ class freestylePlannerGuiApp(App):
         macro = wb.macro("Module1.ResetSettings")
         macro()
 
-    def addlines(self, file, layout, *args):
+    def addlines(self, file, layout, list, *args):
         with open(file) as f:
             # filecontent = f.read()
             filecontent = f.readlines()
@@ -305,56 +306,12 @@ class freestylePlannerGuiApp(App):
             # print("size ", self.layout.size, single_error.size, single_error.texture_size)
             single_error.text_size = self.settingslayout.size
             layout.add_widget(single_error)
+            list.append(single_error)
 
-    def removelines(self):
+    def removelines(self, layout, list):
 
-        self.settings.remove_widget(self.settingslayout)
-        self.settingslayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
-        self.settingslayout.bind(minimum_height=self.settingslayout.setter('height'))
-        self.settingscroll = ScrollView(size_hint=(1, 1), size=(self.settings.width, 100))
-        self.settingscroll.add_widget(self.settingslayout)
-        self.settings.content = self.settingscroll
-
-        # self.settingscroll.remove_widget(self.settingslayout)
-        # self.settingscroll = ScrollView(size_hint=(1, 1), size=(self.settings.width, 100))
-        # self.settingscroll.add_widget(self.settingslayout)
-        # self.settings.content = self.settingscroll
-
-        self.event.remove_widget(self.eventlayout)
-        self.eventlayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
-        self.eventlayout.bind(minimum_height=self.eventlayout.setter('height'))
-        self.eventscroll = ScrollView(size_hint=(1, 1), size=(self.event.width, 100))
-        self.eventscroll.add_widget(self.eventlayout)
-        self.event.content = self.eventscroll
-
-        self.singles.remove_widget(self.singleslayout)
-        self.singles = TabbedPanelHeader(text="Singles")
-        self.singleslayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
-        self.singleslayout.bind(minimum_height=self.singleslayout.setter('height'))
-        self.singlescroll = ScrollView(size_hint=(1, 1), size=(self.singles.width, 100))
-        self.singlescroll.add_widget(self.singleslayout)
-        self.singles.content = self.singlescroll
-
-        self.couples.remove_widget(self.coupleslayout)
-        self.couples = TabbedPanelHeader(text="Couples")
-        self.coupleslayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
-        self.coupleslayout.bind(minimum_height=self.coupleslayout.setter('height'))
-        self.couplescroll = ScrollView(size_hint=(1, 1), size=(self.couples.width, 100))
-        self.couplescroll.add_widget(self.coupleslayout)
-        self.couples.content = self.couplescroll
-
-        self.prolayout.remove_widget(self.prolayout)
-        self.pro = TabbedPanelHeader(text="Pro")
-        self.prolayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
-        self.prolayout.bind(minimum_height=self.prolayout.setter('height'))
-        self.proscroll = ScrollView(size_hint=(1, 1), size=(self.pro.width, 100))
-        self.proscroll.add_widget(self.prolayout)
-        self.pro.content = self.proscroll
-
-        self.instructors.remove_widget(self.instructorslayout)
-        self.instructors = TabbedPanelHeader(text="Instructors")
-        self.instructorslayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
-        self.instructorslayout.bind(minimum_height=self.instructorslayout.setter('height'))
-        instructorscroll = ScrollView(size_hint=(1, 1), size=(self.instructors.width, 100))
-        instructorscroll.add_widget(self.instructorslayout)
-        self.instructors.content = instructorscroll
+        # Remove the labels from the tabbed panel layout
+        for each in list:
+            layout.remove_widget(each)
+        list.clear()
+        return

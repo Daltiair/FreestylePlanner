@@ -213,6 +213,10 @@ def ResolveNOrderSingles(log, resolverlog, order, heat, heat_list, roomid, instr
                             index_2_swap = -1
                             for contestant, inst in zip(placed_sing[swapping_room], placed_inst[swapping_room]):
                                 swappee = [heat_index, swapping_room, index_iter]
+                                # If the entry is a 'blank space' skip over it
+                                if contestant == -1 and inst == -1:
+                                    index_iter += 1
+                                    continue
                                 for i, singles in enumerate(singles_to_compare):
                                     if contestant in singles:
                                         dup = True
@@ -499,6 +503,10 @@ def ResolveNOrderSingles(log, resolverlog, order, heat, heat_list, roomid, instr
                                         if inst != free_inst:  # If the instructor switched is the one to be freed it will not solve the conflict
                                             index_iter += 1
                                             continue
+                                    # If the entry is a 'blank space' skip over it
+                                    if contestant == -1 and inst == -1:
+                                        index_iter += 1
+                                        continue
                                     for j, singles in enumerate(conflict_heat.getSingles()):
                                         if contestant in singles:
                                             dup = True
