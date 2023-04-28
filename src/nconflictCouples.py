@@ -178,6 +178,9 @@ def ResolveNOrderCouples(log, resolverlog, order, heat, heat_list, roomid, instr
                             index_iter = 0
                             index_2_swap = -1
                             for contestant in zip(placed_coup[swapping_room]):
+                                if contestant == -1:
+                                    index_iter += 1
+                                    continue
                                 swappee = [heat_index, swapping_room, index_iter]
                                 for i, singles in enumerate(heat.getSingles()):
                                     if contestant in singles:  # make sure the conflict is not because it has some inst trying to be freed
