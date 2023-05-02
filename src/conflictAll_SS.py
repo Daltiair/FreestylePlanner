@@ -16,6 +16,7 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
     resolverlog_s = ResolverConflictLog()
     resolverlog_c = ResolverConflictLog()
     singles_in_heat = heat.getSingles()
+    couples_in_heat = heat.getCouples()
     instructors_in_heat = heat.getInstructors()
     if init.debug:
         for level in instructors_available_for_heat:
@@ -330,13 +331,17 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                     index_of_conflict = []
                     free_inst = conflict_inst  # The instructor to be matched with a single
                     singles_list = []
+                    couples_list = []
                     for each in singles_in_heat:
                         for every in each:
                             singles_list.append(every)
+                    for each in couples_in_heat:
+                        for every in each:
+                            couples_list.append(every)
                     # Check all possible singles to be matched with
                     inst2sing_node = getNode(init.inst2sing_tree, heat.getDiv()[roomid])
                     inst_tree_node = getNode(init.inst_tree, heat.getDiv()[roomid])
-                    print(inst2sing_node, heat.getDiv()[roomid])
+                    # print(inst2sing_node, heat.getDiv()[roomid])
                     if inst2sing_node.get(free_inst) is None:
                         print("Instructor has no contestants free, check why it is in the conflicts")
                         continue
@@ -374,7 +379,8 @@ def resolveConflictAllSS(roomid, dance_df, log_s, log_c, heat, heat_list, instru
                                 # Look over possible changes to see if the placed one could change
                                 possible_changes = inst2sing_node[conflict_inst]
                                 for fix in possible_changes:
-                                    if dance_df[dance_df[contestant_col] == fix].empty or fix in singles_list:
+                                    # TODO consider adding to to conflict log here
+                                    if dance_df[dance_df[contestant_col] == fix].empty or fix in singles_list or fix in couples_list:
                                         continue
                                     solution_num += 1
                                     if init.solution[order - 1] > solution_num:

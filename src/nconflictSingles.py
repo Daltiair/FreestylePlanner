@@ -306,6 +306,7 @@ def ResolveNOrderSingles(log, resolverlog, order, heat, heat_list, roomid, instr
                     index_of_conflict = []
                     free_inst = conflict_inst  # The instructor to be matched with a single
                     singles_list = []
+                    couples_list = []
                     instructors_list = []
                     for each in singles_to_compare:
                         for every in each:
@@ -313,6 +314,9 @@ def ResolveNOrderSingles(log, resolverlog, order, heat, heat_list, roomid, instr
                     for each in instructors_to_compare:
                         for every in each:
                             instructors_list.append(every)
+                    for each in conflict_heat.getCouples:
+                        for every in each:
+                            couples_list.append(every)
                     # Check all possible singles to be matched with
                     conflict_df = getNode(init.dance_dfs, conflict_div)
                     inst_tree_node = getNode(init.inst_tree, conflict_div)
@@ -353,7 +357,8 @@ def ResolveNOrderSingles(log, resolverlog, order, heat, heat_list, roomid, instr
                                     # Look over possible changes to see if the place one could change
                                     possible_changes = inst2sing_node[conflict_inst]
                                     for fix in possible_changes:
-                                        if conflict_df[conflict_df[contestant_col] == fix].empty or fix in singles_list:
+                                        # TODO consider adding to to conflict log here
+                                        if conflict_df[conflict_df[contestant_col] == fix].empty or fix in singles_list or fix in couples_list:
                                             continue
                                         solution_num += 1
                                         if init.solution[order-1] > solution_num:

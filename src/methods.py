@@ -498,12 +498,12 @@ def pickDfs(ev, dance_dfs, inst_tree, floors, div, eventages_s, eventages_c, cou
             for every in all_poss:
                 if every not in picked_keys:  # add to picked list only if that key combo is not in already
                     print("Checking if", every, "can be added")
-                    if getNode(inst_tree, every) == {}:  # Check if node is there
-                        if every == all_poss[-1]:  # If at the end of options for this priority bracket move to another
-                            prio += 1
-                        continue
                     # if added is a single
                     if every[0] == "S":
+                        if getNode(inst_tree, every) == {}:  # Check if node is there
+                            if every == all_poss[-1]:  # If at the end of this priority bracket, move to another
+                                prio += 1
+                            continue
                         # Sanity check the levels in question
                         unique = findUnique(inst_tree, copyList(picked_keys), every)
                         count = findInstCount(inst_tree, every)
@@ -520,6 +520,10 @@ def pickDfs(ev, dance_dfs, inst_tree, floors, div, eventages_s, eventages_c, cou
                         else:
                             unideal.append([every, count])
                     else:  # if not a single
+                        if not isinstance(getNode(init.dance_dfs, every), pd.DataFrame):  # Check if node is there
+                            if every == all_poss[-1]:  # If at the end of this priority bracket, move to another
+                                prio += 1
+                            continue
                         count = findContestantCount(dance_dfs, every, ev)
                         if count[0] >= couples_per_floor - 2:
                             picked_keys.append(every)
@@ -637,12 +641,12 @@ def pickDfs(ev, dance_dfs, inst_tree, floors, div, eventages_s, eventages_c, cou
             for every in all_poss:
                 if every not in picked_keys:  # add to picked list only if that key combo is not in already
                     print("Checking if", every, "can be added")
-                    if getNode(inst_tree, every) == {}:  # Check if node is there
-                        if every == all_poss[-1]:  # If at the end of options for this priority bracket move to another
-                            prio += 1
-                        continue
                     # if added is a single
                     if every[0] == "S":
+                        if getNode(inst_tree, every) == {}:  # Check if node is there
+                            if every == all_poss[-1]:  # If at the end of this priority bracket move to another
+                                prio += 1
+                            continue
                         # Sanity check the levels in question
                         unique = findUnique(inst_tree, copyList(picked_keys), every)
                         count = findInstCount(inst_tree, every)
@@ -661,6 +665,10 @@ def pickDfs(ev, dance_dfs, inst_tree, floors, div, eventages_s, eventages_c, cou
                         else:
                             unideal.append([every, count])
                     else:  # if not a single
+                        if not isinstance(getNode(init.dance_dfs, every), pd.DataFrame):  # Check if node is there
+                            if every == all_poss[-1]:  # If at the end of this priority bracket move to another
+                                prio += 1
+                            continue
                         count = findContestantCount(dance_dfs, every, ev)
                         if count[0] >= (couples_per_floor - 2):
                             picked_keys.append(every)
