@@ -5,6 +5,7 @@ from pandas import ExcelWriter
 import os
 import openpyxl
 import init
+from debug import checkheat
 from output_methods import createParticipantSheets, appendParticipantSheet, clearParticipantSheetCounts
 import shutil
 
@@ -13,6 +14,7 @@ def buildEvent(heats, eventName):
     # createParticipantSheets()
     rowindex = 1
     # file = os.getcwd() + eventName + '.xlsx'
+    init.logString = ""
     print()
     print("Printing Heats")
     filepath = os.getcwd().replace('\src', "") + "\Output"
@@ -42,6 +44,8 @@ def buildEvent(heats, eventName):
                 if heatslist == []:
                     continue
                 print(each, every, ev)
+                for check in heatslist.getRostersList():
+                    checkheat(check)
                 wb.create_sheet(title=ev)
                 wb.active = wb[ev]
                 wb.active.page_setup.fitToWidth = 1
@@ -276,6 +280,14 @@ def buildEvent(heats, eventName):
 
 
 def createZip():
+    filename = "\\SortingErrors.txt"
+    filepath = os.getcwd().replace('\src', "") + "\\Output"
+    logfile = filepath + filename
+    print(logfile)
+    if init.logString != "":
+        print("Creating Error Log file")
+        with open(logfile, "w+") as f:
+            f.write(init.logString)
     print("Creating zip file")
     zipfile = os.getcwd().replace('\src', "") + "\Output"+ "\Output_" + init.eventName
     outputfilepath = os.getcwd().replace('\src', "") + "/Output"

@@ -2,14 +2,17 @@ import pandas as pd
 
 import init
 from init import getNode
-from output import appendParticipantSheet
 
 
 def checkheat(heat):
 
     for i, room in enumerate(heat.getRoster()):
         if len(room) > heat.getCouplesPerFloor():
-            raise Exception("Roster count exceeds max number room", i, heat.getKey())
+            if init.debug:
+                raise Exception("Roster count exceeds max number room", i, heat.getKey())
+            else:
+                init.logString += "\n"
+                init.logString += "Roster count exceeds max number room" + str(i) + heat.getKey()
 
     for sing_room in heat.getSingles():
         for sing in sing_room:
@@ -20,22 +23,38 @@ def checkheat(heat):
                 if sing in each:
                     counter += 1
                 if each.count(sing) > 1:
-                    raise Exception("Multiple persons in this heat", sing, heat.getKey())
+                    if init.debug:
+                        raise Exception("Multiple persons in this heat", sing, heat.getKey())
+                    else:
+                        init.logString += "\n"
+                        init.logString += "Multiple persons in this heat" + str(sing) + heat.getKey()
 
             for each in heat.getInstructors():
                 if sing in each:
                     counter += 1
                 if each.count(sing) > 1:
-                    raise Exception(" Multiple persons in this heat", sing, heat.getKey())
+                    if init.debug:
+                        raise Exception(" Multiple persons in this heat", sing, heat.getKey())
+                    else:
+                        init.logString += "\n"
+                        init.logString += "Multiple persons in this heat" + str(sing) + heat.getKey()
 
             for each in heat.getCouples():
                 if sing in each:
                     counter += 1
                 if each.count(sing) > 1:
-                    raise Exception(" Multiple persons in this heat", sing, heat.getKey())
+                    if init.debug:
+                        raise Exception(" Multiple persons in this heat", sing, heat.getKey())
+                    else:
+                        init.logString += "\n"
+                        init.logString += "Multiple persons in this heat" + str(sing) + heat.getKey()
 
             if counter > 1:
-                raise Exception("Multiple Persons in this heat", sing, heat.getKey())
+                if init.debug:
+                    raise Exception(" Multiple persons in this heat", sing, heat.getKey())
+                else:
+                    init.logString += "\n"
+                    init.logString += "Multiple persons in this heat" + str(sing) + heat.getKey()
 
     for inst_room in heat.getInstructors():
         for inst in inst_room:
@@ -47,22 +66,38 @@ def checkheat(heat):
                 if inst in each:
                     counter += 1
                 if each.count(inst) > 1:
-                    raise Exception(" Multiple persons in this heat", inst, heat.getKey())
+                    if init.debug:
+                        raise Exception(" Multiple persons in this heat", inst, heat.getKey())
+                    else:
+                        init.logString += "\n"
+                        init.logString += "Multiple persons in this heat" + str(inst) + heat.getKey()
 
             for each in heat.getInstructors():
                 if inst in each:
                     counter += 1
                 if each.count(inst) > 1:
-                    raise Exception(" Multiple persons in this heat", inst, heat.getKey())
+                    if init.debug:
+                        raise Exception(" Multiple persons in this heat", inst, heat.getKey())
+                    else:
+                        init.logString += "\n"
+                        init.logString += "Multiple persons in this heat" + str(inst) + heat.getKey()
 
             for each in heat.getCouples():
                 if inst in each:
                     counter += 1
                 if each.count(inst) > 1:
-                    raise Exception(" Multiple persons in this heat", inst, heat.getKey())
+                    if init.debug:
+                        raise Exception(" Multiple persons in this heat", inst, heat.getKey())
+                    else:
+                        init.logString += "\n"
+                        init.logString += "Multiple persons in this heat" + str(inst) + heat.getKey()
 
             if counter > 1:
-                raise Exception("Multiple Persons in this heat", inst, heat.getKey())
+                if init.debug:
+                    raise Exception(" Multiple persons in this heat", inst, heat.getKey())
+                else:
+                    init.logString += "\n"
+                    init.logString += "Multiple persons in this heat" + str(inst) + heat.getKey()
 
     for coup_room in heat.getCouples():
         for coup in coup_room:
@@ -74,22 +109,38 @@ def checkheat(heat):
                 if coup in each:
                     counter += 1
                 if each.count(coup) > 1:
-                    raise Exception(" Multiple persons in this heat", coup, heat.getKey())
+                    if init.debug:
+                        raise Exception(" Multiple persons in this heat", coup, heat.getKey())
+                    else:
+                        init.logString += "\n"
+                        init.logString += "Multiple persons in this heat" + str(coup) + heat.getKey()
 
             for each in heat.getInstructors():
                 if coup in each:
                     counter += 1
                 if each.count(coup) > 1:
-                    raise Exception(" Multiple persons in this heat", coup, heat.getKey())
+                    if init.debug:
+                        raise Exception(" Multiple persons in this heat", coup, heat.getKey())
+                    else:
+                        init.logString += "\n"
+                        init.logString += "Multiple persons in this heat" + str(coup) + heat.getKey()
 
             for each in heat.getCouples():
                 if coup in each:
                     counter += 1
                 if each.count(coup) > 1:
-                    raise Exception(" Multiple persons in this heat", coup, heat.getKey())
+                    if init.debug:
+                        raise Exception(" Multiple persons in this heat", coup, heat.getKey())
+                    else:
+                        init.logString += "\n"
+                        init.logString += "Multiple persons in this heat" + str(coup) + heat.getKey()
 
             if counter > 1:
-                raise Exception("Multiple Persons in this heat", coup, heat.getKey())
+                if init.debug:
+                    raise Exception(" Multiple persons in this heat", coup, heat.getKey())
+                else:
+                    init.logString += "\n"
+                    init.logString += "Multiple persons in this heat" + str(coup) + heat.getKey()
 
 
 def countInstances(heat, heat_list):
