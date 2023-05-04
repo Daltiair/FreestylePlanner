@@ -17,7 +17,7 @@ eventName = 0
 debug = False
 count = False
 inst = False
-check = True
+check = False
 singles_only = False
 couples_only = False
 

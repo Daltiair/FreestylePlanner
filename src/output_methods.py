@@ -44,13 +44,23 @@ def clearParticipantSheetCounts():
             if init.participantsheets.get(dancer) is not None:  # If the entry is present
                 rawcount = getUnsortedCount(dancer)
                 if (init.participantsheets[dancer]["Count"]) != rawcount:  # If not equal to the input form
-                    print(dancer, "input entry count", init.participantsheets[dancer]["Count"], "!= output sorted count", rawcount, "in event", init.ev)
+                    if init.debug:
+                        print(dancer, "input entry count", init.participantsheets[dancer]["Count"], "!= output sorted count", rawcount, "in event", init.ev)
+                    else:
+                        init.logString += "\n"
+                        init.logString += str(dancer) + "input entry count" + str(init.participantsheets[dancer]["Count"]) + "!= output sorted count" + str(rawcount) + "in event" + str(init.ev)
+
                 # Drop the entry from the DF
                 # Single = Single.reset_index(drop=True)
                 Single = Single.drop(Single[Single["Dancer #"] == dancer].index)
         # If there are some left they were not sorted into the output
         if not Single.empty:
-            print(Single[['Dancer #']], "input entry is not present in sorted event output", init.ev)
+            if init.debug:
+                print(Single[['Dancer #']], "input entry is not present in sorted event output", init.ev)
+            else:
+                for data in Single[["Dancer #"]]:
+                    init.logString += "\n"
+                    init.logString += data + "input entry is not present in sorted event output" + str(init.ev)
 
     if init.ev in init.df_coup.columns:
         Couple = init.df_coup[init.df_coup[init.ev] > 0]
@@ -62,18 +72,31 @@ def clearParticipantSheetCounts():
             if init.participantsheets.get(dancer) is not None:
                 rawcount = getUnsortedCount(dancer)
                 if (init.participantsheets[dancer]["Count"]) != rawcount:  # If not equal to the input form
-                    print(dancer, "input entry count", init.participantsheets[dancer]["Count"], "!= output sorted count", rawcount, "in event", init.ev)
+                    if init.debug:
+                        print(dancer, "input entry count", init.participantsheets[dancer]["Count"], "!= output sorted count", rawcount, "in event", init.ev)
+                    else:
+                        init.logString += "\n"
+                        init.logString += str(dancer) + "input entry count" + str(init.participantsheets[dancer]["Count"]) + "!= output sorted count" + str(rawcount) + "in event" + str(init.ev)
 
             if init.participantsheets.get(dancerf) is not None:
                 rawcount = getUnsortedCount(dancerf)
                 if (init.participantsheets[dancerf]["Count"]) != rawcount:  # If not equal to the input form
-                    print(dancerf, "input entry count", init.participantsheets[dancerf]["Count"], "!= output sorted count", rawcount, "in event", init.ev)
+                    if init.debug:
+                        print(dancerf, "input entry count", init.participantsheets[dancerf]["Count"], "!= output sorted count", rawcount, "in event", init.ev)
+                    else:
+                        init.logString += "\n"
+                        init.logString += str(dancerf) + "input entry count" + str(init.participantsheets[dancerf]["Count"]) + "!= output sorted count" + str(rawcount) + "in event" + str(init.ev)
+
             # Drop the entry from the DF
             # Couple = Couple.reset_index(drop=True)
             Couple = Couple.drop(Couple[(Couple["Lead Dancer #"] == dancer) & (Couple["Follow Dancer #"] == dancerf)].index)
             # If there are some left they were not sorted into the output
         if not Couple.empty:
-            print(Couple[["Lead Dancer #", "Follow Dancer #"]], "input entry is not present in sorted event output", init.ev)
+            if init.debug:
+                print(Couple[["Lead Dancer #", "Follow Dancer #"]], "input entry is not present in sorted event output", init.ev)
+            for data in Couple[["Lead Dancer #", "Follow Dancer #"]]:
+                init.logString += "\n"
+                init.logString += data + "input entry is not present in sorted event output" + str(init.ev)
 
     # Clear the sheet count after counting them
     if init.ev in init.df_sing.columns:

@@ -1,16 +1,10 @@
-import kivy
 from kivy.app import App
-from kivy.properties import StringProperty
-from kivy.uix.widget import Widget
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
-# from kivy.uix.image import Image
 from kivy.uix.button import Button
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelHeader
-from kivy.lang import Builder
-from kivy.uix.textinput import TextInput
 from kivy.uix.scrollview import ScrollView
 import os
 import xlwings as xw
@@ -47,13 +41,12 @@ class freestylePlannerGuiApp(App):
         self.runbutton = Button(text="Run", height=40, width=65)
         self.runbutton.bind(on_press=startProcess)
         self.buttons.add_widget(self.runbutton)
-        # self.runbutton.disabled = True
+        self.runbutton.disabled = True
 
         self.window.add_widget(self.buttons)
         # Create error display tabs
         self.tb_panel = TabbedPanel(do_default_tab=False, pos_hint={"center_x": .5})
 
-        # self.tb_panel.TabbedPanelHeader.default_tab = ""
         self.settings = TabbedPanelHeader(text="Settings")
         self.settingslayout = GridLayout(cols=1, spacing=1, size_hint_y=None)
         self.settingslayout.bind(minimum_height=self.settingslayout.setter('height'))
@@ -95,29 +88,6 @@ class freestylePlannerGuiApp(App):
         self.instructorscroll = ScrollView(size_hint=(1, 1), size=(self.instructors.width, 100))
         self.instructorscroll.add_widget(self.instructorslayout)
         self.instructors.content = self.instructorscroll
-
-        # use a scroll view as content of tab
-        # self.singles.content = BoxLayout(pos_hint={'center_x': .5})
-
-        # Update Singles Error Tab
-        # file = os.getcwd().replace('\src', "") + '\\text.txt'
-        # with open(file) as f:
-        #     filecontent = f.read()
-
-        # scroll = ScrollView(size_hint=(None, None), scroll_y=1)
-        # scroll.size = (self.singles.width, self.singles.height)
-        # text = Label(text=filecontent, size_hint_y=None, padding=(10, 5))
-        # text.text_size = (self.singles.width, self.singles.height)
-        # text.halign = 'left'
-        # text.valign = 'top'
-        # text.height = text.texture_size[1]
-        # scroll.add_widget(text)
-        # self.singles.content = scroll
-
-        # self.couples.content = ScrollView(size_hint=(1, None), size=(self.couples.width, self.couples.height))
-        # self.settings.content = ScrollView(size_hint=(1, None), size=(self.settings.width, self.settings.height*2))
-        # self.event.content = ScrollView(size_hint=(1, None), size=(self.event.width, self.event.height))
-        # self.instructors.content = ScrollView(size_hint=(1, None), size=(self.instructors.width, self.instructors.height))
 
         self.tb_panel.add_widget(self.settings)
         self.tb_panel.add_widget(self.event)
@@ -296,7 +266,6 @@ class freestylePlannerGuiApp(App):
 
     def addlines(self, file, layout, list, *args):
         with open(file) as f:
-            # filecontent = f.read()
             filecontent = f.readlines()
 
         for x in filecontent:
@@ -315,3 +284,4 @@ class freestylePlannerGuiApp(App):
             layout.remove_widget(each)
         list.clear()
         return
+
